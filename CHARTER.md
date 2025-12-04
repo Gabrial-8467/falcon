@@ -1,10 +1,3 @@
-Here is a **clean, polished, professional `CHARTER.md`** for your Falcon prototype.
-It defines the mission, goals, design philosophy, and initial feature scope of the language in a concise way — exactly how real language projects document their intent.
-
-You can **copy–paste this directly** into your `CHARTER.md` file.
-
----
-
 # 🦅 Falcon Language Charter
 
 Falcon is a lightweight, expressive programming language designed for clarity, speed, and ease of implementation.
