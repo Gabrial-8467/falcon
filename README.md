@@ -95,33 +95,59 @@ Hello, Falcon!
 ## 📂 Project Structure
 
 ```
-falcon/
+falcon-prototype/
 ├── README.md
-├── LICENSE (Apache-2.0)
 ├── CHARTER.md
+├── LICENSE
+├── pyproject.toml
+├── requirements.txt
 │
 ├── src/
-│   ├── falcon/
+│   ├── falcon/                       # package root
 │   │   ├── __init__.py
-│   │   ├── lexer.py
-│   │   ├── tokens.py
-│   │   ├── parser.py
-│   │   ├── ast_nodes.py
-│   │   ├── interpreter.py
-│   │   ├── env.py
-│   │   ├── builtins.py
-│   │   ├── repl.py
-│   │   └── runner.py
+│   │   ├── main.py                   # CLI entry: runs files or repl
+│   │   │
+│   │   ├── lexer.py                  # tokenizer for .fn source
+│   │   ├── tokens.py                 # token constants / Token class
+│   │   │
+│   │   ├── parser.py                 # recursive-descent parser -> AST
+│   │   ├── ast_nodes.py              # AST node classes (Number, Call, If, etc.)
+│   │   ├── precedence.py             # operator precedence table (optional helper)
+│   │   │
+│   │   ├── interpreter.py            # AST evaluator (env, eval_node)
+│   │   ├── env.py                    # Environment / Scope (Environment class)
+│   │   ├── builtins.py               # builtin functions (print, len, etc.)
+│   │   │
+│   │   ├── repl.py                   # interactive REPL loop with history
+│   │   ├── runner.py                 # runner to execute .fn files
+│   │   │
+│   │   └── utils/                    # small helpers
+│   │       ├── __init__.py
+│   │       ├── errors.py             # custom exceptions & error formatting
+│   │       ├── file_loader.py        # load source from disk, support modules
+│   │       └── text_helpers.py       # string/escape helpers for lexer/parser
 │   │
-│   └── tests/
+│   └── tests/                        # unit tests runnable by pytest
+│       ├── __init__.py
 │       ├── test_lexer.py
 │       ├── test_parser.py
-│       └── test_interpreter.py
+│       ├── test_interpreter.py
+│       └── test_examples.py
 │
-└── examples/
-    ├── hello.fn
-    ├── factorial.fn
-    └── closure.fn
+├── examples/
+│   ├── hello.fn
+│   ├── factorial.fn
+│   ├── closure.fn
+│   └── async_stub.fn                 # placeholder for future async syntax
+│
+├── docs/
+│   ├── quickstart.md
+│   ├── syntax.md
+│   └── roadmap.md
+│
+└── tools/
+    └── run_example.py                # small helper to run examples quickly
+
 ```
 
 ---
