@@ -1,53 +1,58 @@
 # 🦅 Falcon — A Lightweight Modern Programming Language (Prototype)
 
-Falcon is a **fast, expressive, and beginner-friendly programming language** inspired by the speed and precision of a falcon.
-This is the **prototype implementation**, written in Python, featuring:
+Falcon is a **lightweight, expressive programming language** designed to be fast, readable, and developer-friendly.
+This repository contains the **prototype interpreter**, fully implemented in Python, including:
 
-* A tokenizer (lexer)
-* A recursive-descent parser
-* An AST-based interpreter
-* First-class functions & closures
-* Basic built-in functions
-* A REPL for interactive coding
+* Lexer (tokenizer)
+* Parser → AST
+* Interpreter with lexical scoping
+* Built-in functions
+* REPL shell
+* Example Falcon programs (`.fn` files)
 
-Falcon aims to be a **simple, readable scripting language** that evolves into a powerful modern tool with async abilities, modularity, and a future bytecode VM.
-
----
-
-## ✨ Features
-
-* **Clean, modern syntax**
-* **`let` bindings** and simple variable scoping
-* **Functions & closures**
-* **REPL with history**
-* **Built-ins** like `print()`
-* **Easy to extend** (written in Python)
-* Ready for future features like:
-
-  * async/await
-  * modules
-  * collections
-  * bytecode VM
+Falcon aims to grow into a modern scripting language featuring async, modules, and a future bytecode VM — but this prototype focuses on the fundamentals.
 
 ---
 
-## 📦 Installation (Development Setup)
+## ✨ Features (Prototype v0.1)
 
-Clone the repo:
+* Clean, simple syntax inspired by modern languages
+* First-class functions and closures
+* `let` variable bindings
+* Basic expression evaluation
+* REPL with multiline support
+* Built-in `print()`
+* Easy to extend (designed for experimentation)
+
+Example Falcon code:
+
+```
+let x = 10
+fn add(a, b) { a + b }
+print(add(x, 20))
+```
+
+---
+
+## 📦 Clone the Repository
 
 ```bash
-git clone https://github.com/yourname/falcon
+git clone https://github.com/Gabrial-8467/falcon.git
 cd falcon
 ```
+
+---
+
+## 🛠 Development Setup
 
 Create a virtual environment:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate     # Windows: .venv\Scripts\activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 ```
 
-Install optional dev tools:
+Install optional dev tools (pytest, etc.):
 
 ```bash
 pip install -r requirements.txt
@@ -61,7 +66,7 @@ pip install -r requirements.txt
 python -m falcon.repl
 ```
 
-Example session:
+Example:
 
 ```
 Falcon v0.1 — REPL
@@ -79,7 +84,7 @@ falcon> :quit
 python -m falcon.main run examples/hello.fn
 ```
 
-Sample output:
+Output:
 
 ```
 Hello, Falcon!
@@ -92,11 +97,12 @@ Hello, Falcon!
 ```
 falcon/
 ├── README.md
+├── LICENSE (Apache-2.0)
 ├── CHARTER.md
-├── LICENSE
 │
 ├── src/
 │   ├── falcon/
+│   │   ├── __init__.py
 │   │   ├── lexer.py
 │   │   ├── tokens.py
 │   │   ├── parser.py
@@ -141,9 +147,7 @@ print(fact(6))
 **closure.fn**
 
 ```
-fn makeAdder(x) {
-    return fn(y) { x + y }
-}
+fn makeAdder(x) { fn(y) { x + y } }
 let add2 = makeAdder(2)
 print(add2(5))
 ```
@@ -152,34 +156,38 @@ print(add2(5))
 
 ## 🛣 Roadmap
 
-Planned features:
+Planned improvements:
 
 * [ ] Arrays & maps
 * [ ] Module system (`import`)
 * [ ] Pattern matching
-* [ ] Async/await
-* [ ] Bytecode compiler + VM
+* [ ] Async/await engine
+* [ ] Bytecode compiler & VM
 * [ ] Formatter (`falcon fmt`)
-* [ ] LSP server (editor support)
+* [ ] LSP server for editor integration
+
+This prototype is intentionally small — the next milestones will expand the language’s capabilities.
 
 ---
 
 ## 🤝 Contributing
 
-Falcon is in early prototype stage — contributions are welcome!
-You can help with:
+Contributions are welcome! Areas you can help with:
 
-* Improving the lexer / parser
-* Adding more built-ins
-* Designing the syntax
-* Writing documentation
-* Building the VM or formatter
+* Improving the parser / AST
+* Adding built-in functions
+* Designing syntax extensions
+* Writing docs & examples
+* Building the VM or transpiler
+
+Feel free to open issues or PRs in the repo.
 
 ---
 
 ## 📜 License
 
-MIT License — free to use and modify.
+This project is licensed under the **Apache License 2.0**.
+See the `LICENSE` file for details.
 
 ---
 
