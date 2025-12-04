@@ -1,46 +1,33 @@
 """
 Interpreter for Falcon (JS-like) AST.
 
-This walks AST nodes produced by parser.py (ast_nodes.py) and executes them
-using an Environment (env.py). It supports:
-
-- Statements: LetStmt, PrintStmt, ExprStmt, BlockStmt, IfStmt, WhileStmt
-- Expressions: Literal, Variable, Binary, Unary, Grouping, Call
-- Builtin functions (from builtins.BUILTINS) and user-defined functions
-  via FunctionStmt (lightweight closures)
-- Proper lexical scopes via Environment(parent=...)
-- Return via a dedicated exception raised inside function bodies
-
-Drop this into: src/falcon/interpreter.py
+Updated to support:
+- Member access (base.name) resolving attributes on Python objects & dicts
+- Method-style calls like console.log("hi")
+- Using Promise stub objects returned from builtins
 """
 from __future__ import annotations
 
 from typing import Any, List, Optional, Callable
 from .ast_nodes import (
-    Expr, Literal, Variable, Binary, Unary, Grouping, Call,
+    Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
     FunctionStmt, ReturnStmt,
 )
 from .env import Environment
-from .builtins import BUILTINS
-
+from .builtins import BUILTINS, Promise
 
 class InterpreterError(Exception):
     pass
 
 
 class _ReturnSignal(Exception):
-    """Internal signal used to return a value from a function body."""
     def __init__(self, value: Any):
         super().__init__("return signal")
         self.value = value
 
 
 class Function:
-    """
-    Lightweight function object representing user-defined functions.
-    Stores parameter names, a BlockStmt as body, and the closure environment.
-    """
     def __init__(self, name: Optional[str], params: List[str], body: BlockStmt, closure: Environment):
         self.name = name
         self.params = params
@@ -50,36 +37,26 @@ class Function:
     def call(self, interpreter: "Interpreter", args: List[Any]) -> Any:
         if len(args) != len(self.params):
             raise InterpreterError(f"Function expected {len(self.params)} args but got {len(args)}")
-        # Create function-local env with closure as parent
         local = Environment(self.closure)
-        # Define parameters in local env
         for name, val in zip(self.params, args):
             local.define(name, val)
-        # If function has a name, define it inside its own closure (for recursion)
         if self.name:
             local.define(self.name, self)
         try:
-            # Execute body (BlockStmt.body is list of statements)
             for stmt in self.body.body:
                 interpreter._execute(stmt, local)
         except _ReturnSignal as rs:
             return rs.value
-        return None  # implicit undefined / null
+        return None
 
 
 class Interpreter:
     def __init__(self):
-        # global environment containing builtins
         self.globals = Environment()
         for name, fn in BUILTINS.items():
-            # store Python callables directly
             self.globals.define(name, fn)
 
     def interpret(self, stmts: List[Stmt]) -> None:
-        """
-        Interpret a list of statements at global scope.
-        Raises InterpreterError on runtime issues.
-        """
         try:
             for s in stmts:
                 self._execute(s, self.globals)
@@ -88,7 +65,7 @@ class Interpreter:
         except Exception as e:
             raise InterpreterError(str(e)) from e
 
-    # ---------------- statements ----------------
+    # ---- statements ----
     def _execute(self, stmt: Stmt, env: Environment) -> None:
         if isinstance(stmt, ExprStmt):
             self._eval(stmt.expr, env)
@@ -101,7 +78,6 @@ class Interpreter:
 
         if isinstance(stmt, PrintStmt):
             v = self._eval(stmt.expr, env)
-            # prefer built-in print if present
             try:
                 pr = env.get("print")
                 if callable(pr):
@@ -109,12 +85,10 @@ class Interpreter:
                     return
             except Exception:
                 pass
-            # fallback
             print(v)
             return
 
         if isinstance(stmt, BlockStmt):
-            # Create a new lexical environment for the block
             new_env = Environment(env)
             for s in stmt.body:
                 self._execute(s, new_env)
@@ -129,25 +103,22 @@ class Interpreter:
             return
 
         if isinstance(stmt, WhileStmt):
-            # Evaluate condition before each iteration
             while self._is_truthy(self._eval(stmt.condition, env)):
                 self._execute(stmt.body, env)
             return
 
         if isinstance(stmt, FunctionStmt):
-            # Create Function object and bind it in current env
             func = Function(stmt.name, stmt.params, stmt.body, env)
             env.define(stmt.name, func)
             return
 
         if isinstance(stmt, ReturnStmt):
-            # Evaluate return value and signal up the stack
             val = self._eval(stmt.value, env) if stmt.value is not None else None
             raise _ReturnSignal(val)
 
         raise InterpreterError(f"Unknown statement type: {type(stmt).__name__}")
 
-    # ---------------- expressions ----------------
+    # ---- expressions ----
     def _eval(self, expr: Expr, env: Environment) -> Any:
         if isinstance(expr, Literal):
             return expr.value
@@ -172,7 +143,6 @@ class Interpreter:
             raise InterpreterError(f"Unsupported unary operator: {expr.op}")
 
         if isinstance(expr, Binary):
-            # short-circuit for logical operators
             if expr.op == "&&":
                 left = self._eval(expr.left, env)
                 if not self._is_truthy(left):
@@ -187,7 +157,6 @@ class Interpreter:
             left = self._eval(expr.left, env)
             right = self._eval(expr.right, env)
 
-            # arithmetic
             if expr.op == "+":
                 return left + right
             if expr.op == "-":
@@ -199,7 +168,6 @@ class Interpreter:
             if expr.op == "%":
                 return left % right
 
-            # comparisons / equality
             if expr.op == "==":
                 return left == right
             if expr.op == "!=":
@@ -215,20 +183,50 @@ class Interpreter:
 
             raise InterpreterError(f"Unsupported binary operator: {expr.op}")
 
+        if isinstance(expr, Member):
+            base_val = self._eval(expr.base, env)
+            # If base is dict-like
+            if isinstance(base_val, dict):
+                if expr.name in base_val:
+                    return base_val[expr.name]
+            # If base is Python object with attribute
+            if hasattr(base_val, expr.name):
+                attr = getattr(base_val, expr.name)
+                # If it's a function, we return a bound callable that preserves `this` semantics if needed later
+                if callable(attr):
+                    return attr
+                return attr
+            raise InterpreterError(f"Attribute '{expr.name}' not found on value")
+
         if isinstance(expr, Call):
             callee_val = self._eval(expr.callee, env)
             args = [self._eval(a, env) for a in expr.arguments]
 
-            # If it's a user-defined Function object
+            # If callee_val is our Function object
             if isinstance(callee_val, Function):
                 return callee_val.call(self, args)
 
-            # If it's a Python callable (builtin)
+            # If callee_val is Promise factory/class (callable)
+            if callee_val is Promise:
+                # allow Promise.resolve style usage or new Promise-like usage
+                # If called with a single executor function, try to call it immediately (sync stub)
+                if len(args) == 1 and callable(args[0]):
+                    try:
+                        p = Promise(lambda res, rej: args[0](res, rej))
+                        return p
+                    except Exception as e:
+                        return Promise.reject(e)
+                # otherwise create a resolved promise from arg0 or None
+                return Promise.resolve(args[0] if args else None)
+
+            # If callee_val is a Python callable (built-in)
             if callable(callee_val):
                 try:
                     return callee_val(*args)
+                except TypeError as e:
+                    raise InterpreterError(f"Error calling function: {e}") from e
                 except Exception as e:
-                    raise InterpreterError(f"Error calling builtin: {e}") from e
+                    raise InterpreterError(f"Error in builtin call: {e}") from e
 
             raise InterpreterError("Attempted to call a non-callable value")
 
@@ -237,7 +235,6 @@ class Interpreter:
     # ---------------- helpers ----------------
     @staticmethod
     def _is_truthy(value: Any) -> bool:
-        # JS-like truthiness: false, None, 0, "", empty containers are falsy
         if value is None:
             return False
         if isinstance(value, bool):

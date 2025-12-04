@@ -1,5 +1,5 @@
 """
-Recursive-descent parser for Falcon (JS-like syntax).
+Recursive-descent parser for Falcon (JS-like).
 
 Produces a list of Stmt AST nodes from a token stream produced by lexer.Lexer.
 """
@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import List, Optional
 from .tokens import Token, TokenType
 from .ast_nodes import (
-    Expr, Literal, Variable, Binary, Unary,
+    Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt
 )
 from .precedence import PREC
@@ -124,7 +124,40 @@ class Parser:
         if self._match(TokenType.MINUS):
             operand = self._unary()
             return Unary("-", operand)
-        return self._primary()
+        return self._postfix()
+
+    def _postfix(self) -> Expr:
+        """
+        Parse primary expressions then handle postfix operators:
+         - member access: .ident
+         - function call: (arg, ...)
+        These can be chained: obj.fn(1).other()
+        """
+        expr = self._primary()
+
+        while True:
+            # function call
+            if self._match(TokenType.LPAREN):
+                args: List[Expr] = []
+                if not self._check(TokenType.RPAREN):
+                    while True:
+                        args.append(self._expression())
+                        if self._match(TokenType.COMMA):
+                            continue
+                        break
+                self._consume(TokenType.RPAREN, "Expect ')' after arguments")
+                expr = Call(expr, args)
+                continue
+
+            # member access
+            if self._match(TokenType.DOT):
+                name_tok = self._consume(TokenType.IDENT, "Expect property name after '.'")
+                expr = Member(expr, name_tok.lexeme)
+                continue
+
+            break
+
+        return expr
 
     def _primary(self) -> Expr:
         if self._match(TokenType.NUMBER):
@@ -142,7 +175,7 @@ class Parser:
         if self._match(TokenType.LPAREN):
             expr = self._expression()
             self._consume(TokenType.RPAREN, "Expect ')' after expression")
-            return expr
+            return Grouping(expr)
         raise ParseError(f"Unexpected token: {self._peek()}")
 
     # ---- utilities ----

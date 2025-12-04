@@ -3,9 +3,6 @@ AST node definitions for Falcon.
 
 Lightweight dataclasses representing Expressions and Statements
 for the JS-like Falcon prototype.
-
-These are intentionally simple and easy to pattern-match on.
-Add fields as needed when the language grows.
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -70,6 +67,18 @@ class Call(Expr):
     def __repr__(self) -> str:
         args = ", ".join(repr(a) for a in self.arguments)
         return f"Call({self.callee!r}, [{args}])"
+
+
+@dataclass
+class Member(Expr):
+    """
+    Member access: base.name  (e.g., console.log)
+    """
+    base: Expr
+    name: str
+
+    def __repr__(self) -> str:
+        return f"Member({self.base!r}.{self.name})"
 
 
 # ---------------------
