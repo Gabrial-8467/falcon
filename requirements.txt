@@ -1,0 +1,11 @@
+# --- Core runtime libraries ---
+rich            # Beautiful terminal output (REPL, errors, logs)
+click           # Clean and powerful CLI commands
+
+# --- Parsing / language tools ---
+lark            # Fast, flexible parser for building language grammars
+
+# --- Development tools ---
+black           # Code formatter
+isort           # Automatically sort imports
+
