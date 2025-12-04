@@ -157,13 +157,3 @@ Falcon aims to mature into a full-featured scripting language with:
 The prototype lays the foundation—every feature will grow from this base.
 
 ---
-
-If you'd like, I can also generate:
-
-✔ `LICENSE` (Apache 2.0 ready)
-✔ `CONTRIBUTING.md`
-✔ `quickstart.md` in docs
-✔ Example `.fn` files
-✔ Boilerplate code for all Python modules in `src/falcon/`
-
-Want the next file?
