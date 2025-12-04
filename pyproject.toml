@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "falcon-lang"
+version = "0.1.0"
+description = "A prototype programming language and interpreter."
+authors = [
+    { name = "Gabrial Deora" }
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+
+dependencies = [
+    # Add dependencies here if needed
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Environment :: Console",
+    "Topic :: Software Development :: Interpreters",
+]
+
+[project.urls]
+Homepage = "https://github.com/gabrialdeora/falcon-lang"
+Repository = "https://github.com/gabrialdeora/falcon-lang"
+Issues = "https://github.com/gabrialdeora/falcon-lang/issues"
+Changelog = "https://github.com/gabrialdeora/falcon-lang/releases"
+
+[project.scripts]
+falcon = "falcon.main:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
