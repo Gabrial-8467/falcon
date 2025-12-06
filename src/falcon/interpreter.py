@@ -6,6 +6,7 @@ Updated to support:
 - Method-style calls like console.log("hi")
 - Function expressions evaluation (returns Function object)
 - Assignment expressions (target = value) with env.assign and member set
+- String coercion for '+' and helper _to_string to match builtins.toString
 """
 from __future__ import annotations
 
@@ -82,6 +83,7 @@ class Interpreter:
             try:
                 pr = env.get("print")
                 if callable(pr):
+                    # our print builtin expects *args; pass single value
                     pr(v)
                     return
             except Exception:
@@ -159,6 +161,9 @@ class Interpreter:
             right = self._eval(expr.right, env)
 
             if expr.op == "+":
+                # If either operand is a string, coerce both to strings
+                if isinstance(left, str) or isinstance(right, str):
+                    return self._to_string(left) + self._to_string(right)
                 return left + right
             if expr.op == "-":
                 return left - right
@@ -193,7 +198,7 @@ class Interpreter:
                 try:
                     env.assign(target.name, val)
                 except NameError:
-                    # If assign to undefined variable, match JS-like behavior? Here we raise
+                    # If assign to undefined variable, raise (consistent with env.assign semantics)
                     raise InterpreterError(f"Attempt to assign to undefined variable '{target.name}'")
                 return val
             # Member target (base.name)
@@ -204,13 +209,11 @@ class Interpreter:
                     base_val[target.name] = val
                     return val
                 # python object attribute
-                if hasattr(base_val, target.name) or True:
-                    try:
-                        setattr(base_val, target.name, val)
-                        return val
-                    except Exception as e:
-                        raise InterpreterError(f"Failed to set attribute '{target.name}': {e}") from e
-                raise InterpreterError(f"Cannot assign to member '{target.name}' on this value")
+                try:
+                    setattr(base_val, target.name, val)
+                    return val
+                except Exception as e:
+                    raise InterpreterError(f"Failed to set attribute '{target.name}': {e}") from e
             raise InterpreterError("Invalid assignment target")
 
         if isinstance(expr, Member):
@@ -266,6 +269,34 @@ class Interpreter:
         raise InterpreterError(f"Unsupported expression type: {type(expr).__name__}")
 
     # ---------------- helpers ----------------
+    def _to_string(self, value: Any) -> str:
+        """
+        Consistent string conversion used by '+' coercion.
+        Mirrors builtins.toString behavior:
+         - None -> "null"
+         - bool -> "true"/"false"
+         - numbers -> str()
+         - strings -> unchanged
+         - lists/dicts -> json.dumps if possible
+         - fallback -> repr()
+        """
+        if value is None:
+            return "null"
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, str):
+            return value
+        if isinstance(value, (int, float)):
+            return str(value)
+        try:
+            import json
+            return json.dumps(value)
+        except Exception:
+            try:
+                return repr(value)
+            except Exception:
+                return "<unrepresentable>"
+
     @staticmethod
     def _is_truthy(value: Any) -> bool:
         if value is None:

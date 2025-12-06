@@ -5,27 +5,54 @@ Adds:
 - readFile(path) and writeFile(path, content) with safety checks
 - Promise stub for future async support (sync placeholder)
 - console object with log method
+- toString(value) builtin for explicit conversion
 """
+
 from __future__ import annotations
 
 from typing import Any, Iterable, List, Callable, Dict
 import sys
 import builtins as _py_builtins
 import pathlib
+import json
 
 # --- helpers ---
-def _to_display(x: Any) -> str:
-    """Convert values to a readable string for printing (JS-like)."""
+def _to_string_impl(x: Any) -> str:
+    """
+    Canonical string conversion used by toString() and interpreter coercion.
+    - None -> "null"
+    - bool -> "true"/"false"
+    - str -> unchanged
+    - numbers -> str()
+    - lists/dicts -> JSON-ish via json.dumps if possible
+    - fallback -> repr()
+    """
     if x is None:
         return "null"
     if isinstance(x, bool):
         return "true" if x else "false"
     if isinstance(x, str):
         return x
-    try:
+    if isinstance(x, (int, float)):
+        # Avoid trailing .0 for ints represented as floats? keep str() simple.
         return str(x)
+    # For containers, attempt JSON serialization for nicer output
+    try:
+        # json.dumps handles lists/dicts/primitives
+        return json.dumps(x)
     except Exception:
-        return repr(x)
+        # Fallback to repr for arbitrary objects (functions, custom objects, etc.)
+        try:
+            return repr(x)
+        except Exception:
+            return "<unrepresentable>"
+
+def _to_display(x: Any) -> str:
+    """
+    Short helper for printing with spaces (used by builtin_print).
+    We keep this separate so print formatting is stable even if toString semantics change.
+    """
+    return _to_string_impl(x)
 
 
 # --- print / console ---
@@ -41,7 +68,7 @@ class _Console:
 
     @staticmethod
     def error(*args: Any) -> None:
-        print("ERROR:", *args, file=sys.stderr)
+        print("ERROR:", *[_to_display(a) for a in args], file=sys.stderr)
 
 
 # --- file I/O with safety checks ---
@@ -50,7 +77,7 @@ _BASE_SAFE_DIR = pathlib.Path.cwd().resolve()
 
 def _resolve_safe_path(path: str) -> pathlib.Path:
     p = pathlib.Path(path)
-    # disallow absolute paths that are outside base
+    # Normalize and resolve relative paths under base dir
     if p.is_absolute():
         p = p.resolve()
     else:
@@ -76,13 +103,19 @@ def builtin_writeFile(path: str, content: str) -> None:
     p.write_text(str(content), encoding="utf-8")
 
 
+# --- toString builtin (explicit conversion) ---
+def toString(value: Any) -> str:
+    """Built-in toString(value) available to Falcon scripts."""
+    return _to_string_impl(value)
+
+
 # --- async-friendly Promise stub (synchronous placeholder) ---
 class Promise:
     """
     Very small placeholder Promise-like object.
     - then(fn) executes fn immediately with the resolved value
     - catch(fn) is a noop unless error stored
-    This is synchronous and only exists so user code can call promise.then(...)
+    This is synchronous and only exists so user code can call promise.then(...).
     Real async features can be integrated later.
     """
     def __init__(self, executor: Callable[[Callable[[Any], None], Callable[[Any], None]], None] | None = None):
@@ -97,7 +130,7 @@ class Promise:
                 def resolve(v: Any):
                     self._resolved = True
                     self._value = v
-                    for cb in self._then_callbacks:
+                    for cb in list(self._then_callbacks):
                         try:
                             cb(self._value)
                         except Exception:
@@ -105,7 +138,7 @@ class Promise:
                 def reject(e: Any):
                     self._rejected = True
                     self._error = e
-                    for cb in self._catch_callbacks:
+                    for cb in list(self._catch_callbacks):
                         try:
                             cb(self._error)
                         except Exception:
@@ -135,7 +168,7 @@ class Promise:
             self._catch_callbacks.append(fn)
         return self
 
-    # convenience: static resolved promise
+    # convenience: static resolved/rejected promise
     @staticmethod
     def resolve(value: Any) -> "Promise":
         p = Promise()
@@ -207,6 +240,8 @@ BUILTINS: Dict[str, Callable[..., Any]] = {
     # file ops
     "readFile": builtin_readFile,
     "writeFile": builtin_writeFile,
+    # toString explicit conversion
+    "toString": toString,
     # Promise / async helpers
     "Promise": Promise,
     # console
