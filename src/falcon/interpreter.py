@@ -4,13 +4,14 @@ Interpreter for Falcon (JS-like) AST.
 Updated to support:
 - Member access (base.name) resolving attributes on Python objects & dicts
 - Method-style calls like console.log("hi")
-- Using Promise stub objects returned from builtins
+- Function expressions evaluation (returns Function object)
+- Method-call friendly behavior
 """
 from __future__ import annotations
 
 from typing import Any, List, Optional, Callable
 from .ast_nodes import (
-    Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member,
+    Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
     FunctionStmt, ReturnStmt,
 )
@@ -65,7 +66,7 @@ class Interpreter:
         except Exception as e:
             raise InterpreterError(str(e)) from e
 
-    # ---- statements ----
+    # ---------------- statements ----------------
     def _execute(self, stmt: Stmt, env: Environment) -> None:
         if isinstance(stmt, ExprStmt):
             self._eval(stmt.expr, env)
@@ -118,7 +119,7 @@ class Interpreter:
 
         raise InterpreterError(f"Unknown statement type: {type(stmt).__name__}")
 
-    # ---- expressions ----
+    # ---------------- expressions ----------------
     def _eval(self, expr: Expr, env: Environment) -> Any:
         if isinstance(expr, Literal):
             return expr.value
@@ -192,11 +193,14 @@ class Interpreter:
             # If base is Python object with attribute
             if hasattr(base_val, expr.name):
                 attr = getattr(base_val, expr.name)
-                # If it's a function, we return a bound callable that preserves `this` semantics if needed later
                 if callable(attr):
                     return attr
                 return attr
             raise InterpreterError(f"Attribute '{expr.name}' not found on value")
+
+        if isinstance(expr, FunctionExpr):
+            # Create a Function object capturing current env as closure
+            return Function(expr.name, expr.params, expr.body, env)
 
         if isinstance(expr, Call):
             callee_val = self._eval(expr.callee, env)
@@ -208,15 +212,12 @@ class Interpreter:
 
             # If callee_val is Promise factory/class (callable)
             if callee_val is Promise:
-                # allow Promise.resolve style usage or new Promise-like usage
-                # If called with a single executor function, try to call it immediately (sync stub)
                 if len(args) == 1 and callable(args[0]):
                     try:
                         p = Promise(lambda res, rej: args[0](res, rej))
                         return p
                     except Exception as e:
                         return Promise.reject(e)
-                # otherwise create a resolved promise from arg0 or None
                 return Promise.resolve(args[0] if args else None)
 
             # If callee_val is a Python callable (built-in)
