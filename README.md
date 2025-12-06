@@ -1,274 +1,217 @@
 🦅 Falcon — A Lightweight Modern Programming Language (Prototype)
 
-Falcon is a lightweight, expressive programming language designed to be fast, readable, and beginner-friendly.
-This repository contains the prototype interpreter, implemented in Python, including:
+Falcon is a beginner-friendly, expressive programming language with a syntax that aims to be unique, clean, and easy to learn — without copying Python or JavaScript.
 
-Lexer (tokenizer)
+This repository contains the prototype interpreter, fully implemented in Python, featuring:
 
-Parser → AST
+A custom lexer and parser
 
-Interpreter with lexical scoping and closures
+AST generation
 
-Built-in functions and safe file I/O
+An interpreter with lexical scoping
 
-REPL (multiline input)
+Built-in functions and I/O
 
-Example Falcon programs (.fn files)
+REPL shell
 
-This prototype focuses on the language fundamentals and experimentation — future work will add async, modules and (maybe) a bytecode VM.
+Example .fn programs
 
-🚀 What’s new since v0.1
+Extensible architecture for future VM & bytecode backend
 
-This prototype contains changes and new features beyond the very first minimal build:
+Falcon is evolving toward a modern scripting environment with async, modules, and a future bytecode VM — but this prototype focuses on core semantics and experimentation.
 
-New declaration operators and keywords:
+✨ Features (Prototype v0.2)
 
-var / const declarations (with is_const semantics)
+✔ Unique Falcon syntax (var, const, :=, :: method calls)
+✔ First-class functions and closures
+✔ Assignment expressions
+✔ Block scoping with shadowing
+✔ Built-in functions (print, len, range, console::log, file I/O, etc.)
+✔ REPL with multiline parsing & history
+✔ Expression & statement execution
+✔ Extensible design for language research
 
-New declaration operator: := (preferred) — e.g. var x := 10;
+⚡ Example Falcon code
+var x := 10;
+function add(a, b) {
+    return a + b;
+}
 
-Backwards compatibility: let x = 10 and x = 5 assignments still work
+print(add(x, 20));
 
-New loop constructs:
+🔁 New Loop Syntax (Falcon-style)
+for var i := 1 to 5 step 1 {
+    print(i);
+}
 
-Falcon for loop: for var i := START to END [step STEP] { ... } (inclusive to, step defaults to 1)
+loop {
+    print("infinite loop running...");
+}
 
-Infinite loop: loop { ... }
+🧸 Closures
+function makeCounter() {
+    var c := 0;
+    return function() {
+        c = c + 1;
+        return c;
+    };
+}
 
-Member access & method style:
+var next := makeCounter();
+print(next()); # 1
+print(next()); # 2
 
-obj.prop and obj::method(...) (double-colon method shorthand supported)
+📦 Clone the Repository
+git clone https://github.com/Gabrial-8467/falcon.git
+cd falcon
 
-Assignment expressions and better scoping:
+🛠 Development Setup
 
-x = 3 (assign), var x := 3 (declare), const y := 5 (immutable)
+Create a virtual environment:
 
-Builtins and runtime improvements:
+python -m venv .venv
 
-print(...), console::log(...)
 
-readFile(path) and writeFile(path, content) with safe sandboxing (cwd-only)
+Activate it:
 
-Promise stub (sync placeholder for future async)
+# Windows
+.venv\Scripts\activate
 
-len, range, typeOf, assert, exit
+# Linux / macOS
+source .venv/bin/activate
 
-String coercion:
 
-'a' + 1 → "a1" (Falcon coerces with a consistent toString behavior)
+Install development tools:
 
-Lexer / parser / interpreter updates:
+pip install -r requirements.txt
 
-DECL token for :=, METHODCOLON for ::, tokens for for, loop, to, step, var, const
+▶ Running the REPL
+python -m falcon.repl
 
-Tests & examples scaffold (pytest-friendly)
 
-REPL + runner CLI improvements (multiline input, .load command)
+Example:
 
-If it feels like Falcon is growing a personality — good. It now speaks a bit of its own dialect. 😊
+Falcon REPL — v0.2
+falcon> var x := 5;
+falcon> x * 2;
+10
+falcon> exit;
 
-🔖 Example Falcon programs
+▶ Running a Falcon Program
+python -m falcon.main run examples/hello.fn
 
+
+Output:
+
+Hello, Falcon!
+
+📂 Project Structure
+falcon/
+├── README.md
+├── CHARTER.md
+├── LICENSE
+├── pyproject.toml
+├── requirements.txt
+│
+├── src/
+│   ├── falcon/                       
+│   │   ├── __init__.py
+│   │   ├── main.py             # CLI entry
+│   │   │
+│   │   ├── lexer.py            # Falcon tokenizer
+│   │   ├── tokens.py           # token types
+│   │   │
+│   │   ├── parser.py           # recursive-descent parser
+│   │   ├── ast_nodes.py        # AST node classes
+│   │   ├── precedence.py        # operator precedence
+│   │   │
+│   │   ├── interpreter.py       # runtime evaluator
+│   │   ├── env.py               # lexical environment model
+│   │   ├── builtins.py          # built-ins (print, range, Promise, etc.)
+│   │   │
+│   │   ├── repl.py              # interactive REPL
+│   │   ├── runner.py            # run .fn scripts
+│   │   │
+│   │   └── utils/
+│   │       ├── __init__.py
+│   │       ├── errors.py
+│   │       ├── file_loader.py
+│   │       └── text_helpers.py
+│   │
+│   └── tests/
+│       ├── test_lexer.py
+│       ├── test_parser.py
+│       ├── test_interpreter.py
+│       └── test_examples.py
+│
+├── examples/
+│   ├── hello.fn
+│   ├── factorial.fn
+│   ├── closure.fn
+│   └── loops.fn
+│
+└── tools/
+    └── run_example.py
+
+📘 Example Programs
 hello.fn
-
 print("Hello, Falcon!");
 
-
 factorial.fn
-
-fn fact(n) {
+function fact(n) {
     if (n == 0) { return 1; }
     return n * fact(n - 1);
 }
 print(fact(6));
 
-
-for loop demo (examples/for_demo.fn)
-
-for var i := 0 to 5 {
-    print(i);
+closure.fn
+function makeAdder(x) {
+    return function(y) { x + y };
 }
-# prints 0 1 2 3 4 5
-
-
-infinite loop demo (examples/loop_demo.fn)
-
-# Be careful running this one — it loops forever unless you return or error.
-loop {
-    print("tick");
-    # ... use return/exit to break out in examples
-}
-
-
-console and file I/O
-
-console::log("Starting...");
-writeFile("sample.txt", "hello from falcon");
-print(readFile("sample.txt"));
-
-🧭 Syntax notes (quick summary)
-
-Declarations
-
-var name := expr; — mutable variable (scoped to containing block)
-
-const name := expr; — immutable (reassign raises error)
-
-Backwards support: let name = expr (treated like var)
-
-Functions
-
-Declaration:
-
-function add(a, b) {
-  return a + b;
-}
-
-
-Expression (anonymous / named expression):
-
-function(a, b) { a + b }
-
-
-Member / method access
-
-obj.prop
-
-obj::method(args) — sugar for calling member method
-
-For loop (Falcon unique syntax)
-
-for var i := START to END [step STEP] { ... }
-
-to is inclusive (END included).
-
-step optional, default 1. Use negative step to count down.
-
-Infinite loop
-
-loop { ... }
-
-Semicolons ; are optional but allowed — recommended at line ends for clarity.
-
-🛠 Development setup
-
-Clone and create a virtual environment:
-
-git clone https://github.com/Gabrial-8467/falcon.git
-cd falcon
-python -m venv .venv
-# mac/linux
-source .venv/bin/activate
-# windows (PowerShell)
-.venv\Scripts\Activate.ps1
-
-
-Install development requirements:
-
-pip install -r requirements.txt
-# or: pip install -e .  # for editable install of the package
-
-▶ Running the REPL
-
-Start the interactive REPL:
-
-python -m falcon.repl
-
-
-Tip: on Windows the standard readline module is not available. If you hit ModuleNotFoundError: No module named 'readline' you can either:
-
-install a readline fallback: pip install pyreadline (older) or pip install prompt_toolkit and we can wire that up later, or
-
-use the runner on a file: python -m falcon.main run examples/hello.fn
-
-The REPL supports multiline input, .load <file> to run a file, and help/quit.
-
-▶ Running a Falcon program
-
-Use the runner entry point:
-
-# run by module
-python -m falcon.main run examples/hello.fn
-
-# or if you installed package editable
-falcon run examples/hello.fn
-# or start REPL
-falcon -i
-
-
-(Commands depend on your entry point implementation — adjust if you added CLI flags.)
-
-✅ Tests
-
-Run the pytest suite:
-
-pip install -r requirements.txt   # ensure pytest is available
-pytest -q
-
-
-Add tests under src/falcon/tests/ — we've scaffolded test files: test_lexer.py, test_parser.py, test_interpreter.py, test_examples.py. New tests for for/loop/var/const are recommended.
-
-🧩 Project structure
-src/falcon/
-├── lexer.py
-├── tokens.py
-├── parser.py
-├── ast_nodes.py
-├── precedence.py
-├── interpreter.py
-├── env.py
-├── builtins.py
-├── repl.py
-└── runner.py
-examples/
-tests/
-docs/
-tools/
-
-⚠️ Current limitations & TODOs
-
-No break/continue yet — loops can only be exited via return or exception.
-
-Promise is a synchronous stub — real async runtime not implemented.
-
-Module system / imports not implemented.
-
-No arrays/maps in the prototype yet (roadmap item).
-
-REPL readline support on Windows can be improved (see notes above).
+var add2 := makeAdder(2);
+print(add2(5));
 
 🛣 Roadmap
 
-Planned improvements:
+Upcoming features:
 
- Arrays & maps (list/dict literals)
+ Arrays & maps
 
  Module system (import)
 
- break / continue in loops
+ Pattern matching
 
- Async/await engine & proper Promise support
+ Async/await engine
 
- Bytecode compiler & VM
+ Bytecode compiler & VM backend
 
- Formatter (falcon fmt) and LSP server
+ Formatter (falcon fmt)
+
+ Official LSP server
+
+ Native method syntax using ::
+
+ Better error messages & diagnostics
+
+Falcon is intentionally small right now — the goal is to evolve it into a modern, expressive scripting language.
 
 🤝 Contributing
 
-Contributions welcome! Good first issues:
+You can help improve Falcon by:
 
-Add break / continue semantics + tests
+Enhancing the parser / interpreter
 
-Implement arrays & map literals
+Extending built-ins
 
-Improve REPL input (use prompt_toolkit fallback on Windows)
+Designing syntax improvements
 
-Add more builtin functions and safe sandboxing options
+Writing documentation & examples
 
-Document the language syntax in docs/syntax.md
+Prototyping the future VM
 
-If you make changes, please add tests and examples.
+Pull requests and issues are welcome!
 
 📜 License
 
-This project is licensed under the Apache License 2.0. See LICENSE for details.
+Licensed under the Apache License 2.0.
+See the LICENSE file for full details.
