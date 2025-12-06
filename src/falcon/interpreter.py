@@ -5,13 +5,13 @@ Updated to support:
 - Member access (base.name) resolving attributes on Python objects & dicts
 - Method-style calls like console.log("hi")
 - Function expressions evaluation (returns Function object)
-- Method-call friendly behavior
+- Assignment expressions (target = value) with env.assign and member set
 """
 from __future__ import annotations
 
 from typing import Any, List, Optional, Callable
 from .ast_nodes import (
-    Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr,
+    Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
     FunctionStmt, ReturnStmt,
 )
@@ -184,19 +184,51 @@ class Interpreter:
 
             raise InterpreterError(f"Unsupported binary operator: {expr.op}")
 
+        if isinstance(expr, Assign):
+            # evaluate value first
+            val = self._eval(expr.value, env)
+            target = expr.target
+            # Variable target
+            if isinstance(target, Variable):
+                try:
+                    env.assign(target.name, val)
+                except NameError:
+                    # If assign to undefined variable, match JS-like behavior? Here we raise
+                    raise InterpreterError(f"Attempt to assign to undefined variable '{target.name}'")
+                return val
+            # Member target (base.name)
+            if isinstance(target, Member):
+                base_val = self._eval(target.base, env)
+                # dict-like
+                if isinstance(base_val, dict):
+                    base_val[target.name] = val
+                    return val
+                # python object attribute
+                if hasattr(base_val, target.name) or True:
+                    try:
+                        setattr(base_val, target.name, val)
+                        return val
+                    except Exception as e:
+                        raise InterpreterError(f"Failed to set attribute '{target.name}': {e}") from e
+                raise InterpreterError(f"Cannot assign to member '{target.name}' on this value")
+            raise InterpreterError("Invalid assignment target")
+
         if isinstance(expr, Member):
             base_val = self._eval(expr.base, env)
             # If base is dict-like
             if isinstance(base_val, dict):
                 if expr.name in base_val:
                     return base_val[expr.name]
+                # undefined property -> None
+                return None
             # If base is Python object with attribute
             if hasattr(base_val, expr.name):
                 attr = getattr(base_val, expr.name)
                 if callable(attr):
                     return attr
                 return attr
-            raise InterpreterError(f"Attribute '{expr.name}' not found on value")
+            # property doesn't exist, return None
+            return None
 
         if isinstance(expr, FunctionExpr):
             # Create a Function object capturing current env as closure
