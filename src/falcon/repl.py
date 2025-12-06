@@ -4,7 +4,7 @@ REPL for the Falcon language (JS-like).
 Provides:
 - start_repl() entry point
 - multiline input support (basic brace/paren matching)
-- readline history (saved to ~/.falcon_history)
+- readline history (saved to ~/.falcon_history) when available
 - commands: help, .load <file>, quit/exit
 
 REPL loop:
@@ -16,10 +16,15 @@ from __future__ import annotations
 
 import os
 import pathlib
-import readline
 import sys
 import traceback
 from typing import List
+
+# Windows doesn't ship the GNU readline module. Make it optional.
+try:
+    import readline  # type: ignore
+except Exception:
+    readline = None  # type: ignore
 
 from .lexer import Lexer, LexerError
 from .parser import Parser, ParseError
@@ -29,6 +34,8 @@ _HISTFILE = os.path.expanduser("~/.falcon_history")
 
 
 def _setup_readline() -> None:
+    if readline is None:
+        return
     try:
         readline.set_history_length(1000)
         if os.path.exists(_HISTFILE):
@@ -39,6 +46,8 @@ def _setup_readline() -> None:
 
 
 def _save_readline() -> None:
+    if readline is None:
+        return
     try:
         readline.write_history_file(_HISTFILE)
     except Exception:
@@ -76,7 +85,7 @@ def _balanced(source: str) -> bool:
             if not stack:
                 return False
             top = stack.pop()
-            pairs = { "(": ")", "{": "}", "[": "]" }
+            pairs = {"(": ")", "{": "}", "[": "]"}
             if pairs.get(top) != ch:
                 return False
         i += 1
