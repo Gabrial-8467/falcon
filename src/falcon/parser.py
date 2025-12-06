@@ -2,14 +2,16 @@
 Recursive-descent parser for Falcon (JS-like).
 
 Produces a list of Stmt AST nodes from a token stream produced by lexer.Lexer.
+Supports function declarations and function expressions, and return statements.
 """
 from __future__ import annotations
 
 from typing import List, Optional
 from .tokens import Token, TokenType
 from .ast_nodes import (
-    Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member,
-    Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt
+    Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr,
+    Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
+    FunctionStmt, ReturnStmt
 )
 from .precedence import PREC
 
@@ -33,6 +35,8 @@ class Parser:
     def _declaration(self) -> Stmt:
         if self._match(TokenType.LET):
             return self._let_declaration()
+        if self._match(TokenType.FUNCTION):
+            return self._function_declaration()
         return self._statement()
 
     def _let_declaration(self) -> Stmt:
@@ -44,12 +48,27 @@ class Parser:
         self._optional_semicolon()
         return LetStmt(name, initializer)
 
+    def _function_declaration(self) -> Stmt:
+        # we've consumed 'function'
+        name_tok = self._consume(TokenType.IDENT, "Expect function name after 'function'")
+        name = name_tok.lexeme
+        params = self._parse_params()
+        body = self._parse_block()
+        return FunctionStmt(name, params, body)
+
     # ---- statements ----
     def _statement(self) -> Stmt:
         if self._match(TokenType.PRINT):
             expr = self._expression()
             self._optional_semicolon()
             return PrintStmt(expr)
+        if self._match(TokenType.RETURN):
+            # return statement
+            val: Optional[Expr] = None
+            if not self._check(TokenType.SEMI) and not self._check(TokenType.RBRACE) and not self._is_at_end():
+                val = self._expression()
+            self._optional_semicolon()
+            return ReturnStmt(val)
         if self._match(TokenType.IF):
             return self._if_statement()
         if self._match(TokenType.WHILE):
@@ -160,6 +179,17 @@ class Parser:
         return expr
 
     def _primary(self) -> Expr:
+        # function expression (anonymous or named)
+        if self._match(TokenType.FUNCTION):
+            # anonymous function expression or named function expression
+            name: Optional[str] = None
+            if self._check(TokenType.IDENT):
+                name = self._advance().lexeme
+            params = self._parse_params()
+            body = self._parse_block()
+            # function expression returns a FunctionExpr
+            return FunctionExpr(name, params, body)
+
         if self._match(TokenType.NUMBER):
             return Literal(self._previous().literal)
         if self._match(TokenType.STRING):
@@ -178,7 +208,27 @@ class Parser:
             return Grouping(expr)
         raise ParseError(f"Unexpected token: {self._peek()}")
 
-    # ---- utilities ----
+    # ---- helpers ----
+    def _parse_params(self) -> List[str]:
+        self._consume(TokenType.LPAREN, "Expect '(' before parameter list")
+        params: List[str] = []
+        if not self._check(TokenType.RPAREN):
+            while True:
+                tok = self._consume(TokenType.IDENT, "Expect parameter name")
+                params.append(tok.lexeme)
+                if self._match(TokenType.COMMA):
+                    continue
+                break
+        self._consume(TokenType.RPAREN, "Expect ')' after parameter list")
+        return params
+
+    def _parse_block(self) -> BlockStmt:
+        # require a block for function bodies
+        if not self._match(TokenType.LBRACE):
+            raise ParseError("Expect '{' before function body")
+        body = self._block()
+        return BlockStmt(body)
+
     def _token_to_op(self, token: Token) -> Optional[str]:
         mapping = {
             TokenType.PLUS: "+", TokenType.MINUS: "-", TokenType.STAR: "*", TokenType.SLASH: "/",
