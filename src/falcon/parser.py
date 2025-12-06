@@ -1,8 +1,10 @@
+# file: src/falcon/parser.py
 """
 Recursive-descent parser for Falcon (JS-like).
 
 Produces a list of Stmt AST nodes from a token stream produced by lexer.Lexer.
-Supports assignment expressions (right-associative).
+Supports assignment expressions (right-associative) and var/const declarations
+with the ':=' declaration operator (DECL). Backwards-compatible with 'let' and '='.
 """
 from __future__ import annotations
 
@@ -33,20 +35,39 @@ class Parser:
 
     # ---- top-level declarations ----
     def _declaration(self) -> Stmt:
+        # Accept legacy 'let' for backward compatibility, plus new 'var' and 'const'
         if self._match(TokenType.LET):
-            return self._let_declaration()
+            # legacy let behaves as var (mutable)
+            return self._var_or_const_declaration(is_const=False)
+        if self._match(TokenType.VAR):
+            return self._var_or_const_declaration(is_const=False)
+        if self._match(TokenType.CONST):
+            return self._var_or_const_declaration(is_const=True)
         if self._match(TokenType.FUNCTION):
             return self._function_declaration()
         return self._statement()
 
-    def _let_declaration(self) -> Stmt:
-        name_tok = self._consume(TokenType.IDENT, "Expect variable name after 'let'")
+    def _var_or_const_declaration(self, is_const: bool) -> Stmt:
+        """
+        Parse:
+          var NAME := expr ;
+          const NAME := expr ;
+        Backwards compatible with:
+          let NAME = expr ;
+          var NAME = expr ;
+        """
+        name_tok = self._consume(TokenType.IDENT, "Expect variable name after declaration")
         name = name_tok.lexeme
         initializer: Optional[Expr] = None
-        if self._match(TokenType.EQ):
+
+        # Prefer ':=' (DECL) for new syntax, but accept '=' as fallback for compatibility.
+        if self._match(TokenType.DECL):
             initializer = self._expression()
+        elif self._match(TokenType.EQ):
+            initializer = self._expression()
+        # semicolon optional
         self._optional_semicolon()
-        return LetStmt(name, initializer)
+        return LetStmt(name, initializer, is_const=is_const)
 
     def _function_declaration(self) -> Stmt:
         # we've consumed 'function'
