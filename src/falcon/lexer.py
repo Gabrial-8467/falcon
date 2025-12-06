@@ -5,7 +5,7 @@ Features:
 - // line comments, /* block comments */
 - numbers (int, float), strings (single/double quotes)
 - identifiers and keywords
-- two-char operators: == != <= >= && ||
+- two-char operators: == != <= >= && ||, declaration ':=' and method '::'
 - produces Token objects from tokens.py
 """
 from __future__ import annotations
@@ -17,6 +17,8 @@ from .utils.text_helpers import is_alpha, is_alnum
 
 KEYWORDS = {
     "let": TokenType.LET,
+    "var": TokenType.VAR,
+    "const": TokenType.CONST,
     "if": TokenType.IF,
     "else": TokenType.ELSE,
     "while": TokenType.WHILE,
@@ -120,6 +122,19 @@ class Lexer:
             # regular slash token
             self._add_token(TokenType.SLASH)
             return
+
+        # declaration ':=' and method '::' handling
+        if c == ":":
+            # ':=' declaration operator
+            if self._match("="):
+                self._add_token(TokenType.DECL)  # DECL for ':='
+                return
+            # '::' method-call operator
+            if self._match(":"):
+                self._add_token(TokenType.METHODCOLON)  # METHODCOLON for '::'
+                return
+            # single ':' is not used in current grammar; treat as error to avoid surprises
+            raise LexerError(f"Unexpected ':' at {self.lineno}:{self.col}")
 
         # single-char tokens and simple two-char detection handled below
         single_map = {
