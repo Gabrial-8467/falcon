@@ -81,6 +81,17 @@ class Member(Expr):
         return f"Member({self.base!r}.{self.name})"
 
 
+@dataclass
+class FunctionExpr(Expr):
+    """Function expression (anonymous or named) usable in expression position."""
+    name: Optional[str]
+    params: List[str]
+    body: 'BlockStmt'  # reuse BlockStmt for the body
+
+    def __repr__(self) -> str:
+        return f"FunctionExpr({self.name or '<anon>'}({', '.join(self.params)}), {self.body!r})"
+
+
 # ---------------------
 # Statement nodes
 # ---------------------
@@ -145,6 +156,9 @@ class WhileStmt(Stmt):
 # ---------------------
 @dataclass
 class FunctionStmt(Stmt):
+    """
+    Function declaration statement: function name(params) { ... }
+    """
     name: str
     params: List[str]
     body: BlockStmt
