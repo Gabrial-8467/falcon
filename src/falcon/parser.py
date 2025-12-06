@@ -2,14 +2,14 @@
 Recursive-descent parser for Falcon (JS-like).
 
 Produces a list of Stmt AST nodes from a token stream produced by lexer.Lexer.
-Supports function declarations and function expressions, and return statements.
+Supports assignment expressions (right-associative).
 """
 from __future__ import annotations
 
 from typing import List, Optional
 from .tokens import Token, TokenType
 from .ast_nodes import (
-    Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr,
+    Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
     FunctionStmt, ReturnStmt
 )
@@ -109,9 +109,21 @@ class Parser:
         self._consume(TokenType.RBRACE, "Expect '}' after block")
         return stmts
 
-    # ---- expressions (precedence climbing) ----
+    # ---- expressions (assignment + precedence climbing) ----
     def _expression(self) -> Expr:
-        return self._binary_expression(0)
+        return self._assignment()
+
+    def _assignment(self) -> Expr:
+        # Parse left-hand side as binary/expression
+        expr = self._binary_expression(0)
+        # If there's an '=' token, parse right-hand side as assignment (right-associative)
+        if self._match(TokenType.EQ):
+            value = self._assignment()
+            # Only Variables and Members are valid assignment targets
+            if isinstance(expr, Variable) or isinstance(expr, Member):
+                return Assign(expr, value)
+            raise ParseError(f"Invalid assignment target at {self._previous()}")
+        return expr
 
     def _binary_expression(self, min_prec: int) -> Expr:
         expr = self._unary()
