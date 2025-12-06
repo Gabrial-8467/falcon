@@ -1,3 +1,4 @@
+# file: src/falcon/ast_nodes.py
 """
 AST node definitions for Falcon.
 
@@ -122,11 +123,21 @@ class ExprStmt(Stmt):
 
 @dataclass
 class LetStmt(Stmt):
+    """
+    Declaration statement for variables.
+
+    We use 'var' and 'const' in the language; `is_const` distinguishes them.
+    - name: variable name
+    - initializer: optional initialiser expression
+    - is_const: True for const declarations, False for var
+    """
     name: str
     initializer: Optional[Expr] = None
+    is_const: bool = False
 
     def __repr__(self) -> str:
-        return f"LetStmt({self.name}, {self.initializer!r})"
+        k = "const" if self.is_const else "var"
+        return f"LetStmt({k} {self.name}, {self.initializer!r})"
 
 
 @dataclass
