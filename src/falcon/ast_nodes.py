@@ -92,6 +92,19 @@ class FunctionExpr(Expr):
         return f"FunctionExpr({self.name or '<anon>'}({', '.join(self.params)}), {self.body!r})"
 
 
+@dataclass
+class Assign(Expr):
+    """
+    Assignment expression: target = value
+    `target` is either Variable or Member
+    """
+    target: Expr
+    value: Expr
+
+    def __repr__(self) -> str:
+        return f"Assign({self.target!r} = {self.value!r})"
+
+
 # ---------------------
 # Statement nodes
 # ---------------------

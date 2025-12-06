@@ -1,10 +1,13 @@
-let count = 0;
+function makeCounter() {
+    let c = 0;
+    function inc() {
+        c = c + 1;
+        return c;
+    }
+    return inc;
+}
 
-let inc = function(x) {
-    count = count + 1;
-    return count;
-};
-
-print inc(null);
-print inc(null);
-print inc(null);
+let counter = makeCounter();
+print counter();
+print counter();
+print counter();
