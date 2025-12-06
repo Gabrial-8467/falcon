@@ -1,3 +1,4 @@
+# file: src/falcon/interpreter.py
 """
 Interpreter for Falcon (JS-like) AST.
 
@@ -7,6 +8,7 @@ Updated to support:
 - Function expressions evaluation (returns Function object)
 - Assignment expressions (target = value) with env.assign and member set
 - String coercion for '+' and helper _to_string to match builtins.toString
+- var / const declaration support via LetStmt.is_const
 """
 from __future__ import annotations
 
@@ -43,7 +45,9 @@ class Function:
         for name, val in zip(self.params, args):
             local.define(name, val)
         if self.name:
-            local.define(self.name, self)
+            # bind the function itself in its local scope (allow recursion)
+            # make the function binding const to avoid accidental overwrite inside its own scope
+            local.define(self.name, self, is_const=True)
         try:
             for stmt in self.body.body:
                 interpreter._execute(stmt, local)
@@ -55,8 +59,9 @@ class Function:
 class Interpreter:
     def __init__(self):
         self.globals = Environment()
+        # register builtins as constants to avoid accidental reassignment
         for name, fn in BUILTINS.items():
-            self.globals.define(name, fn)
+            self.globals.define(name, fn, is_const=True)
 
     def interpret(self, stmts: List[Stmt]) -> None:
         try:
@@ -75,7 +80,7 @@ class Interpreter:
 
         if isinstance(stmt, LetStmt):
             value = self._eval(stmt.initializer, env) if stmt.initializer is not None else None
-            env.define(stmt.name, value)
+            env.define(stmt.name, value, is_const=getattr(stmt, "is_const", False))
             return
 
         if isinstance(stmt, PrintStmt):
@@ -197,9 +202,8 @@ class Interpreter:
             if isinstance(target, Variable):
                 try:
                     env.assign(target.name, val)
-                except NameError:
-                    # If assign to undefined variable, raise (consistent with env.assign semantics)
-                    raise InterpreterError(f"Attempt to assign to undefined variable '{target.name}'")
+                except NameError as e:
+                    raise InterpreterError(str(e)) from e
                 return val
             # Member target (base.name)
             if isinstance(target, Member):
