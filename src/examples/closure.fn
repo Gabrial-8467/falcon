@@ -1,0 +1,10 @@
+let count = 0;
+
+let inc = function(x) {
+    count = count + 1;
+    return count;
+};
+
+print inc(null);
+print inc(null);
+print inc(null);
