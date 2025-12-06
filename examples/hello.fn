@@ -1,5 +1,6 @@
-function greet(name) {
-    print "Hello, " + name;
+function add(a, b) {
+    return a + b;
 }
 
-greet("Falcon");
+let result = add(10, 20);
+print result;     // 30
