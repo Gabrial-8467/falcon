@@ -97,8 +97,8 @@ class Lexer:
         c = self._advance()
 
         # skip whitespace (except newline handled in _advance)
-        if c in " \r\t":
-            return
+        if c in " \r\n\t":
+           return
 
         # Single-line and block comments
         if c == "/":
