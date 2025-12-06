@@ -5,6 +5,7 @@ Recursive-descent parser for Falcon (JS-like).
 Produces a list of Stmt AST nodes from a token stream produced by lexer.Lexer.
 Supports assignment expressions (right-associative) and var/const declarations
 with the ':=' declaration operator (DECL). Backwards-compatible with 'let' and '='.
+Adds Falcon-specific `for` and `loop` statements and supports METHODCOLON `::` member access.
 """
 from __future__ import annotations
 
@@ -13,7 +14,8 @@ from .tokens import Token, TokenType
 from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
-    FunctionStmt, ReturnStmt
+    FunctionStmt, ReturnStmt,  # existing
+    ForStmt, LoopStmt,        # NEW: loop nodes
 )
 from .precedence import PREC
 
@@ -94,6 +96,10 @@ class Parser:
             return self._if_statement()
         if self._match(TokenType.WHILE):
             return self._while_statement()
+        if self._match(TokenType.FOR):
+            return self._for_statement()
+        if self._match(TokenType.LOOP):
+            return self._loop_statement()
         if self._match(TokenType.LBRACE):
             return BlockStmt(self._block())
         # expression statement
@@ -129,6 +135,59 @@ class Parser:
             stmts.append(self._declaration())
         self._consume(TokenType.RBRACE, "Expect '}' after block")
         return stmts
+
+    # ---- NEW: for / loop parsing ----
+    def _for_statement(self) -> Stmt:
+        """
+        Parse Falcon for syntax:
+          for var i := START to END [step STEP] { ... }
+        'var' is required to declare the loop variable (keeps semantics simple).
+        """
+        # require 'var' keyword for loop iterator declaration
+        if not self._match(TokenType.VAR):
+            raise ParseError("Expect 'var' in for-loop header (e.g. for var i := 0 to 10 { ... })")
+
+        name_tok = self._consume(TokenType.IDENT, "Expect loop variable name after 'var'")
+        name = name_tok.lexeme
+
+        # initializer: prefer ':=' (DECL) but accept '=' for compatibility
+        if self._match(TokenType.DECL):
+            start_expr = self._expression()
+        elif self._match(TokenType.EQ):
+            start_expr = self._expression()
+        else:
+            raise ParseError("Expect ':=' or '=' initializer in for-loop (e.g. var i := 0)")
+
+        # require 'to' keyword
+        self._consume(TokenType.TO, "Expect 'to' in for-loop header (e.g. to 10)")
+
+        end_expr = self._expression()
+
+        step_expr: Optional[Expr] = None
+        if self._match(TokenType.STEP):
+            step_expr = self._expression()
+
+        # body
+        body = self._block_or_statement()
+        # body is BlockStmt or Stmt; ensure BlockStmt for uniformity
+        if isinstance(body, BlockStmt):
+            block = body
+        else:
+            block = BlockStmt([body])
+
+        return ForStmt(name, start_expr, end_expr, step_expr, block)
+
+    def _loop_statement(self) -> Stmt:
+        """
+        Parse infinite loop:
+          loop { ... }
+        """
+        body = self._block_or_statement()
+        if isinstance(body, BlockStmt):
+            block = body
+        else:
+            block = BlockStmt([body])
+        return LoopStmt(block)
 
     # ---- expressions (assignment + precedence climbing) ----
     def _expression(self) -> Expr:
@@ -181,9 +240,9 @@ class Parser:
     def _postfix(self) -> Expr:
         """
         Parse primary expressions then handle postfix operators:
-         - member access: .ident
+         - member access: .ident or ::ident
          - function call: (arg, ...)
-        These can be chained: obj.fn(1).other()
+        These can be chained: obj.fn(1).other() or obj::method(1)::other()
         """
         expr = self._primary()
 
@@ -201,9 +260,9 @@ class Parser:
                 expr = Call(expr, args)
                 continue
 
-            # member access
-            if self._match(TokenType.DOT):
-                name_tok = self._consume(TokenType.IDENT, "Expect property name after '.'")
+            # member access (dot or double-colon)
+            if self._match(TokenType.DOT) or self._match(TokenType.METHODCOLON):
+                name_tok = self._consume(TokenType.IDENT, "Expect property name after '.' or '::'")
                 expr = Member(expr, name_tok.lexeme)
                 continue
 

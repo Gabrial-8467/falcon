@@ -9,6 +9,7 @@ Updated to support:
 - Assignment expressions (target = value) with env.assign and member set
 - String coercion for '+' and helper _to_string to match builtins.toString
 - var / const declaration support via LetStmt.is_const
+- ForStmt and LoopStmt runtime handling
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from typing import Any, List, Optional, Callable
 from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
-    FunctionStmt, ReturnStmt,
+    FunctionStmt, ReturnStmt, ForStmt, LoopStmt,
 )
 from .env import Environment
 from .builtins import BUILTINS, Promise
@@ -113,6 +114,65 @@ class Interpreter:
         if isinstance(stmt, WhileStmt):
             while self._is_truthy(self._eval(stmt.condition, env)):
                 self._execute(stmt.body, env)
+            return
+
+        # ---------------- ForStmt (Falcon-style 'for') ----------------
+        if isinstance(stmt, ForStmt):
+            # Evaluate start/end/step in the current env
+            start_val = self._eval(stmt.start, env)
+            end_val = self._eval(stmt.end, env)
+            step_val = self._eval(stmt.step, env) if stmt.step is not None else 1
+
+            # create a loop-local environment so the iterator is scoped to the loop
+            loop_env = Environment(env)
+            # initialize loop variable
+            loop_env.define(stmt.name, start_val)
+
+            # ensure numeric step
+            try:
+                s = float(step_val)
+            except Exception:
+                raise InterpreterError("for-loop 'step' must be a number")
+            if s == 0:
+                raise InterpreterError("for-loop 'step' must not be zero")
+
+            # helper for inclusive 'to' semantics
+            def _cond(cur, endv, stepn):
+                try:
+                    if stepn > 0:
+                        return cur <= endv
+                    else:
+                        return cur >= endv
+                except Exception:
+                    raise InterpreterError("for-loop comparison failed (non-comparable values)")
+
+            # run loop; support 'return' inside body via _ReturnSignal propagation
+            while _cond(loop_env.get(stmt.name), end_val, s):
+                try:
+                    for st in stmt.body.body:
+                        self._execute(st, loop_env)
+                except _ReturnSignal:
+                    # propagate return upwards
+                    raise
+                # increment iterator using Python numeric semantics
+                cur = loop_env.get(stmt.name)
+                try:
+                    loop_env.assign(stmt.name, cur + step_val)
+                except Exception as e:
+                    raise InterpreterError(f"Failed to increment loop variable: {e}") from e
+            return
+
+        # ---------------- LoopStmt (infinite) ----------------
+        if isinstance(stmt, LoopStmt):
+            loop_env = Environment(env)
+            try:
+                while True:
+                    for st in stmt.body.body:
+                        self._execute(st, loop_env)
+            except _ReturnSignal:
+                # propagate return outwards
+                raise
+            # loop never naturally returns
             return
 
         if isinstance(stmt, FunctionStmt):

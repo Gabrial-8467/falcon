@@ -5,7 +5,8 @@ Features:
 - // line comments, /* block comments */
 - numbers (int, float), strings (single/double quotes)
 - identifiers and keywords
-- two-char operators: == != <= >= && ||, declaration ':=' and method '::'
+- two-char operators: == != <= >= && ||
+- special operators: declaration ':=' and method '::'
 - produces Token objects from tokens.py
 """
 from __future__ import annotations
@@ -22,6 +23,10 @@ KEYWORDS = {
     "if": TokenType.IF,
     "else": TokenType.ELSE,
     "while": TokenType.WHILE,
+    "for": TokenType.FOR,
+    "loop": TokenType.LOOP,
+    "to": TokenType.TO,
+    "step": TokenType.STEP,
     "true": TokenType.TRUE,
     "false": TokenType.FALSE,
     "null": TokenType.NULL,

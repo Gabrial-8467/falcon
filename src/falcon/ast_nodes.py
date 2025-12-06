@@ -176,6 +176,42 @@ class WhileStmt(Stmt):
 
 
 # ---------------------
+# New loop nodes
+# ---------------------
+@dataclass
+class ForStmt(Stmt):
+    """
+    Falcon 'for' loop:
+      for var i := START to END [step STEP] { ... }
+    - name: iterator name (string)
+    - start: Expr for initial value
+    - end: Expr for final value (inclusive)
+    - step: Optional[Expr] step value (defaults to 1)
+    - body: BlockStmt body
+    """
+    name: str
+    start: Expr
+    end: Expr
+    step: Optional[Expr]
+    body: BlockStmt
+
+    def __repr__(self) -> str:
+        return f"ForStmt(var {self.name} := {self.start!r} to {self.end!r} step {self.step!r}, {self.body!r})"
+
+
+@dataclass
+class LoopStmt(Stmt):
+    """
+    Infinite loop:
+      loop { ... }
+    """
+    body: BlockStmt
+
+    def __repr__(self) -> str:
+        return f"LoopStmt({self.body!r})"
+
+
+# ---------------------
 # Utility / future nodes
 # ---------------------
 @dataclass
