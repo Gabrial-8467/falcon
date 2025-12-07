@@ -38,9 +38,6 @@ class Parser:
     # ---- top-level declarations ----
     def _declaration(self) -> Stmt:
         # Accept legacy 'let' for backward compatibility, plus new 'var' and 'const'
-        if self._match(TokenType.LET):
-            # legacy let behaves as var (mutable)
-            return self._var_or_const_declaration(is_const=False)
         if self._match(TokenType.VAR):
             return self._var_or_const_declaration(is_const=False)
         if self._match(TokenType.CONST):
