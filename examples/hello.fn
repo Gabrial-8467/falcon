@@ -1,6 +1,9 @@
-function add(a, b) {
-    return a + b;
-}
 
-var result = add(10, 20);
-show(result);     // 30
+// --- 11. Promise (sync stub) ---
+var p = Promise(function(resolve, reject) {
+    resolve("Promise resolved!");
+});
+
+p.then(function(msg) {
+    show("PROMISE:", msg);
+});
