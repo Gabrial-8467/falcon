@@ -33,6 +33,10 @@ class _ReturnSignal(Exception):
 
 
 class Function:
+    """
+    Runtime function wrapper for AST-defined functions (used by interpreter).
+    The compiler/VM may produce different callable objects; this is the interpreter's.
+    """
     def __init__(self, name: Optional[str], params: List[str], body: BlockStmt, closure: Environment):
         self.name = name
         self.params = params
@@ -62,8 +66,9 @@ class Interpreter:
         self.globals = Environment()
         # register builtins as constants to avoid accidental reassignment
         for name, fn in BUILTINS.items():
-            # BUILTINS already contains 'show' and others
+            # it's okay if builtins already include 'show'
             self.globals.define(name, fn, is_const=True)
+
 
     def interpret(self, stmts: List[Stmt]) -> None:
         try:
@@ -73,6 +78,7 @@ class Interpreter:
             raise
         except Exception as e:
             raise InterpreterError(str(e)) from e
+
 
     # ---------------- statements ----------------
     def _execute(self, stmt: Stmt, env: Environment) -> None:
@@ -173,7 +179,7 @@ class Interpreter:
             raise _ReturnSignal(val)
 
         raise InterpreterError(f"Unknown statement type: {type(stmt).__name__}")
-
+    
     # ---------------- expressions ----------------
     def _eval(self, expr: Expr, env: Environment) -> Any:
         if isinstance(expr, Literal):
@@ -362,3 +368,34 @@ class Interpreter:
         if isinstance(value, (list, tuple, dict, set)):
             return len(value) > 0
         return True
+
+    # ---------------- VM/interoperability helper ----------------
+    def call_function_ast(self, func_node, args: List[Any]) -> Any:
+        """
+        Call an AST-backed function node from VM code. The VM/Compiler should
+        arrange for func_node to contain `.params` and `.body`, and ideally a
+        `.closure_env` attribute pointing at a suitable Environment (or None).
+        If `.closure_env` is None, fall back to interpreter.globals.
+        """
+        closure_env = getattr(func_node, "closure_env", None)
+        if closure_env is None:
+            closure_env = self.globals
+
+        local = Environment(closure_env)
+        params = getattr(func_node, "params", [])
+        for name, val in zip(params, args):
+            local.define(name, val)
+        # bind function name for recursion if present
+        name = getattr(func_node, "name", None)
+        if name:
+            # provide a callable that routes back to interpreter call
+            def _recur_wrapper(*a):
+                return self.call_function_ast(func_node, list(a))
+            local.define(name, _recur_wrapper, is_const=True)
+
+        try:
+            for stmt in func_node.body.body:
+                self._execute(stmt, local)
+        except _ReturnSignal as rs:
+            return rs.value
+        return None
