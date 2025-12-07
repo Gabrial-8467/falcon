@@ -53,7 +53,7 @@ class TokenType(Enum):
     NULL = auto()
     FUNCTION = auto()
     RETURN = auto()
-    PRINT = auto()
+    SHOW = auto()
 
     # --- End of File ---
     EOF = auto()

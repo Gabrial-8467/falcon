@@ -6,13 +6,13 @@ Adds:
 - Promise stub for future async support (sync placeholder)
 - console object with log method
 - toString(value) builtin for explicit conversion
+- show(...) as the preferred output function
 """
 
 from __future__ import annotations
 
-from typing import Any, Iterable, List, Callable, Dict
+from typing import Any, List, Callable, Dict
 import sys
-import builtins as _py_builtins
 import pathlib
 import json
 
@@ -34,14 +34,10 @@ def _to_string_impl(x: Any) -> str:
     if isinstance(x, str):
         return x
     if isinstance(x, (int, float)):
-        # Avoid trailing .0 for ints represented as floats? keep str() simple.
         return str(x)
-    # For containers, attempt JSON serialization for nicer output
     try:
-        # json.dumps handles lists/dicts/primitives
         return json.dumps(x)
     except Exception:
-        # Fallback to repr for arbitrary objects (functions, custom objects, etc.)
         try:
             return repr(x)
         except Exception:
@@ -49,22 +45,22 @@ def _to_string_impl(x: Any) -> str:
 
 def _to_display(x: Any) -> str:
     """
-    Short helper for printing with spaces (used by builtin_print).
-    We keep this separate so print formatting is stable even if toString semantics change.
+    Short helper for printing with spaces (used by builtin_show).
     """
     return _to_string_impl(x)
 
 
-# --- print / console ---
-def builtin_print(*args: Any) -> None:
+# --- show / console ---
+def builtin_show(*args: Any) -> None:
+    """Preferred Falcon output function: show(...)."""
     out = " ".join(_to_display(a) for a in args)
+    # use host stdout
     print(out)
-
 
 class _Console:
     @staticmethod
     def log(*args: Any) -> None:
-        builtin_print(*args)
+        builtin_show(*args)
 
     @staticmethod
     def error(*args: Any) -> None:
@@ -168,7 +164,6 @@ class Promise:
             self._catch_callbacks.append(fn)
         return self
 
-    # convenience: static resolved/rejected promise
     @staticmethod
     def resolve(value: Any) -> "Promise":
         p = Promise()
@@ -231,7 +226,8 @@ def builtin_exit(code: int = 0) -> None:
 
 # --- export builtins mapping ---
 BUILTINS: Dict[str, Callable[..., Any]] = {
-    "print": builtin_print,
+    # preferred Falcon output
+    "show": builtin_show,
     "len": builtin_len,
     "range": builtin_range,
     "typeOf": builtin_typeof,

@@ -1,4 +1,3 @@
-# file: src/falcon/interpreter.py
 """
 Interpreter for Falcon (JS-like) AST.
 
@@ -10,13 +9,14 @@ Updated to support:
 - String coercion for '+' and helper _to_string to match builtins.toString
 - var / const declaration support via LetStmt.is_const
 - ForStmt and LoopStmt runtime handling
+- `show` as the primary output builtin (no legacy `print` handling)
 """
 from __future__ import annotations
 
 from typing import Any, List, Optional, Callable
 from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
-    Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
+    Stmt, ExprStmt, LetStmt, BlockStmt, IfStmt, WhileStmt,
     FunctionStmt, ReturnStmt, ForStmt, LoopStmt,
 )
 from .env import Environment
@@ -62,6 +62,7 @@ class Interpreter:
         self.globals = Environment()
         # register builtins as constants to avoid accidental reassignment
         for name, fn in BUILTINS.items():
+            # BUILTINS already contains 'show' and others
             self.globals.define(name, fn, is_const=True)
 
     def interpret(self, stmts: List[Stmt]) -> None:
@@ -82,19 +83,6 @@ class Interpreter:
         if isinstance(stmt, LetStmt):
             value = self._eval(stmt.initializer, env) if stmt.initializer is not None else None
             env.define(stmt.name, value, is_const=getattr(stmt, "is_const", False))
-            return
-
-        if isinstance(stmt, PrintStmt):
-            v = self._eval(stmt.expr, env)
-            try:
-                pr = env.get("print")
-                if callable(pr):
-                    # our print builtin expects *args; pass single value
-                    pr(v)
-                    return
-            except Exception:
-                pass
-            print(v)
             return
 
         if isinstance(stmt, BlockStmt):

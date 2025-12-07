@@ -1,4 +1,3 @@
-# file: src/falcon/ast_nodes.py
 """
 AST node definitions for Falcon.
 
@@ -141,15 +140,6 @@ class LetStmt(Stmt):
         return f"LetStmt({kind} {self.name}, {self.initializer!r})"
 
 
-
-@dataclass
-class PrintStmt(Stmt):
-    expr: Expr
-
-    def __repr__(self) -> str:
-        return f"PrintStmt({self.expr!r})"
-
-
 @dataclass
 class BlockStmt(Stmt):
     body: List[Stmt]
@@ -198,6 +188,8 @@ class ForStmt(Stmt):
     body: BlockStmt
 
     def __repr__(self) -> str:
+        if self.step is None:
+            return f"ForStmt(var {self.name} := {self.start!r} to {self.end!r}, {self.body!r})"
         return f"ForStmt(var {self.name} := {self.start!r} to {self.end!r} step {self.step!r}, {self.body!r})"
 
 

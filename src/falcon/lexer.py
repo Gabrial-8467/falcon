@@ -29,7 +29,7 @@ KEYWORDS = {
     "true": TokenType.TRUE,
     "false": TokenType.FALSE,
     "null": TokenType.NULL,
-    "print": TokenType.PRINT,
+    "show": TokenType.SHOW,
     "function": TokenType.FUNCTION,
     "return": TokenType.RETURN,
 }
