@@ -1,42 +1,46 @@
 """
 Environment (variable scope) system for the Falcon language.
 
-Supports:
-- var declarations (mutable)
-- const declarations (immutable, reassignment forbidden)
-- lexical scoping
-- closures
+Each Environment holds:
+- a dictionary of variable bindings
+- a reference to an optional parent environment (lexical outer scope)
+
+This enables:
+- var-scoped variables
+- block scoping
+- nested functions (closures)
+- proper variable shadowing
+- const protection (no reassignment)
 """
 
 from __future__ import annotations
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 
 
 class Environment:
     def __init__(self, parent: Optional["Environment"] = None):
+        # store values in a simple dict
         self.values: Dict[str, Any] = {}
-        self.consts: Dict[str, bool] = {}   # Track which names are constant
+        # track which names are const in this environment
+        self.consts: Set[str] = set()
         self.parent = parent
 
     # -------------------------
-    # Variable Definition: var / const
+    # Variable Definition: var x := value
     # -------------------------
     def define(self, name: str, value: Any, is_const: bool = False):
         """
-        Defines a new variable in THIS scope.
-        If the variable already exists in this scope and is const -> error.
+        Define a name in the current environment.
+        If is_const=True, the name cannot be reassigned (in this env or children will still respect).
         """
-        if name in self.values and self.consts.get(name, False):
-            raise NameError(f"Cannot redefine constant '{name}' in the same scope")
-
         self.values[name] = value
-
         if is_const:
-            self.consts[name] = True
+            self.consts.add(name)
         else:
-            # Ensure not marked const
+            # if redefining a previously-const here, keep const unless explicitly changed
             if name in self.consts:
-                self.consts.pop(name, None)
+                # keep existing const flag (do not silently remove)
+                pass
 
     # -------------------------
     # Variable Lookup: get x
@@ -54,19 +58,18 @@ class Environment:
     # Variable Assignment: x = value
     # -------------------------
     def assign(self, name: str, value: Any):
-        """
-        Assigns to an existing variable. Walks parent scopes.
-        Fails if variable is const.
-        """
-        env = self
-        while env is not None:
-            if name in env.values:
-                if env.consts.get(name, False):
-                    raise NameError(f"Cannot assign to constant '{name}'")
-                env.values[name] = value
-                return
-            env = env.parent
+        # If variable exists in current env, check const and assign
+        if name in self.values:
+            if name in self.consts:
+                raise NameError(f"Attempt to assign to constant '{name}'")
+            self.values[name] = value
+            return
 
+        # Otherwise look up in parent chain
+        if self.parent is not None:
+            return self.parent.assign(name, value)
+
+        # If not found anywhere:
         raise NameError(f"Attempt to assign to undefined variable '{name}'")
 
     # -------------------------

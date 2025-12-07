@@ -1,4 +1,3 @@
-# file: src/falcon/tokens.py
 from enum import Enum, auto
 from dataclasses import dataclass
 
@@ -40,7 +39,6 @@ class TokenType(Enum):
     STRING = auto()
 
     # --- Keywords ---
-    LET = auto()
     VAR = auto()        # 'var' (mutable declaration)
     CONST = auto()      # 'const' (immutable declaration)
     IF = auto()
