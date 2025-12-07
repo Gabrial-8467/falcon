@@ -124,20 +124,22 @@ class ExprStmt(Stmt):
 @dataclass
 class LetStmt(Stmt):
     """
-    Declaration statement for variables.
+    Variable declaration statement.
 
-    We use 'var' and 'const' in the language; `is_const` distinguishes them.
-    - name: variable name
-    - initializer: optional initialiser expression
-    - is_const: True for const declarations, False for var
+    Falcon uses only:
+        - `var`   → mutable variable
+        - `const` → immutable variable
+
+    `is_const` tells the interpreter whether reassignment is allowed.
     """
     name: str
     initializer: Optional[Expr] = None
-    is_const: bool = False
+    is_const: bool = False   # True for const, False for var
 
     def __repr__(self) -> str:
-        k = "const" if self.is_const else "var"
-        return f"LetStmt({k} {self.name}, {self.initializer!r})"
+        kind = "const" if self.is_const else "var"
+        return f"LetStmt({kind} {self.name}, {self.initializer!r})"
+
 
 
 @dataclass
