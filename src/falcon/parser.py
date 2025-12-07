@@ -78,11 +78,7 @@ class Parser:
 
     # ---- statements ----
     def _statement(self) -> Stmt:
-        if self._match(TokenType.SHOW):
-           expr = self._expression()
-           self._optional_semicolon()
-           return PrintStmt(expr)  # same AST node, new keyword
-
+        
         if self._match(TokenType.RETURN):
             # return statement
             val: Optional[Expr] = None

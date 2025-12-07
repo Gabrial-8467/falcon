@@ -1,7 +1,6 @@
 from enum import Enum, auto
 from dataclasses import dataclass
 
-
 class TokenType(Enum):
     # --- Single-character tokens ---
     LBRACE = auto()    # {
@@ -29,31 +28,26 @@ class TokenType(Enum):
     ANDAND = auto()    # &&
     OROR = auto()      # ||
 
-    # --- Special multi-char operators / punctuation added for Falcon ---
-    DECL = auto()         # ':=' declaration operator
-    METHODCOLON = auto()  # '::' method accessor
-
     # --- Literals ---
     IDENT = auto()
     NUMBER = auto()
     STRING = auto()
 
     # --- Keywords ---
-    VAR = auto()        # 'var' (mutable declaration)
-    CONST = auto()      # 'const' (immutable declaration)
+    VAR = auto()
+    CONST = auto()
     IF = auto()
     ELSE = auto()
     WHILE = auto()
-    FOR = auto()        # 'for' (Falcon-style for)
-    LOOP = auto()       # 'loop' (infinite loop)
-    TO = auto()         # 'to' (for .. to ..)
-    STEP = auto()       # 'step' in for header
+    FOR = auto()
+    LOOP = auto()
+    TO = auto()
+    STEP = auto()
     TRUE = auto()
     FALSE = auto()
     NULL = auto()
     FUNCTION = auto()
     RETURN = auto()
-    SHOW = auto()
 
     # --- End of File ---
     EOF = auto()

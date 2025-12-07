@@ -29,10 +29,10 @@ KEYWORDS = {
     "true": TokenType.TRUE,
     "false": TokenType.FALSE,
     "null": TokenType.NULL,
-    "show": TokenType.SHOW,
     "function": TokenType.FUNCTION,
     "return": TokenType.RETURN,
 }
+
 
 
 class LexerError(Exception):
