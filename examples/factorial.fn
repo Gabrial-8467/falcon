@@ -7,4 +7,4 @@ while (i <= n) {
     i = i + 1;
 }
 
-print "factorial(" + n + ") = " + result;
+show("factorial(" + n + ") = " + result);

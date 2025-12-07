@@ -7,7 +7,7 @@ function makeCounter() {
     return inc;
 }
 
-let counter = makeCounter();
-print counter();
-print counter();
-print counter();
+var counter = makeCounter();
+show(counter());
+show(counter());
+show(counter());
