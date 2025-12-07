@@ -1,3 +1,65 @@
+// Falcon Demo Program — Showcases all major features!
+
+// --- 1. Function declaration ---
+function add(a, b) {
+    return a + b;
+}
+
+// --- 2. Using var and const ---
+var x = 10;
+const y = 5;
+
+// --- 3. show() output ---
+show("x + y =", add(x, y));
+
+// --- 4. If / else ---
+if (x > y) {
+    show("x is greater");
+} else {
+    show("y is greater");
+}
+
+// --- 5. While loop ---
+var n = 3;
+while (n > 0) {
+    show("Countdown:", n);
+    n = n - 1;
+}
+
+// --- 6. For loop (Falcon style)
+for i := 1 to 5 step 1 {
+    show("for-loop value:", i);
+}
+
+// --- 7. Infinite loop (stop via break logic using return inside function) ---
+function loopDemo() {
+    var c = 0;
+    loop {
+        show("loop iteration:", c);
+        c = c + 1;
+
+        if (c == 3) {
+            return;   // exit loopDemo()
+        }
+    }
+}
+loopDemo();
+
+// --- 8. Function expressions + closures ---
+var makeCounter = function(start) {
+    return function() {
+        start = start + 1;
+        return start;
+    };
+};
+
+var counter = makeCounter(5);
+show("counter 1:", counter());
+show("counter 2:", counter());
+
+// --- 9. Member access (console.log) ---
+console.log("using console.log works!");
+
 
 // --- 11. Promise (sync stub) ---
 var p = Promise(function(resolve, reject) {
