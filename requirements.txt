@@ -9,3 +9,4 @@ lark            # Fast, flexible parser for building language grammars
 black           # Code formatter
 isort           # Automatically sort imports
 
+pyreadline3      # Enhanced readline support for better CLI experience on Windows
