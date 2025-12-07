@@ -114,21 +114,50 @@ class VM:
 
             if op == OP_ADD:
                 b = pop(); a = pop()
-                push(self._binary_add(a, b))
+                try:
+                    push(self._binary_add(a, b))
+                except Exception as e:
+                    raise VMRuntimeError(
+                        f"ADD error in frame '{frame.name}' at ip={frame.ip-1}: {e} | operands: {a!r}, {b!r}"
+                    ) from e
                 continue
             if op == OP_SUB:
-                b = pop(); a = pop(); push(a - b); continue
+                b = pop(); a = pop()
+                try:
+                    push(a - b)
+                except Exception as e:
+                    raise VMRuntimeError(
+                        f"SUB error in frame '{frame.name}' at ip={frame.ip-1}: {e} | operands: {a!r}, {b!r}"
+                    ) from e
+                continue
             if op == OP_MUL:
-                b = pop(); a = pop(); push(a * b); continue
+                b = pop(); a = pop()
+                try:
+                    push(a * b)
+                except Exception as e:
+                    raise VMRuntimeError(
+                        f"MUL error in frame '{frame.name}' at ip={frame.ip-1}: {e} | operands: {a!r}, {b!r}"
+                    ) from e
+                continue
             if op == OP_DIV:
                 b = pop(); a = pop()
                 try:
                     push(a / b)
                 except Exception as e:
-                    raise VMRuntimeError(f"Division error: {e}") from e
+                    raise VMRuntimeError(
+                        f"DIV error in frame '{frame.name}' at ip={frame.ip-1}: {e} | operands: {a!r}, {b!r}"
+                    ) from e
                 continue
             if op == OP_MOD:
-                b = pop(); a = pop(); push(a % b); continue
+                b = pop(); a = pop()
+                try:
+                    push(a % b)
+                except Exception as e:
+                    raise VMRuntimeError(
+                        f"MOD error in frame '{frame.name}' at ip={frame.ip-1}: {e} | operands: {a!r}, {b!r}"
+                    ) from e
+                continue
+
 
             if op == OP_EQ:
                 b = pop(); a = pop(); push(a == b); continue

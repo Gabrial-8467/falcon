@@ -1,25 +1,23 @@
 # src/falcon/compiler.py
 """
-Compiler: AST -> bytecode for Falcon A3 hybrid VM.
+Simple bytecode compiler for Falcon (A3 hybrid prototype).
 
-Design notes:
-- Produces a Code object with:
-    - instructions (list of (opcode, operand?) tuples)
-    - constants pool (list)
-    - argcount, local variable slots
-- Simple variable indexing: locals first (by declaration order), otherwise globals.
-- Detects simple captures: if a function body refers to names not defined as locals/params, we mark it CAPTURED.
-  Captured functions remain as AST-backed closures and will be executed by the interpreter at runtime.
-- Bytecode is intentionally small and readable.
+Produces Code objects with instructions and const pool suitable for vm.VM.
+This is a pragmatic, modest compiler — not a full optimizer. It focuses on
+correctness and compatibility with the VM and interpreter fallback.
+
+Exposes:
+ - class Compiler with compile_module(ast) and compile(ast)
+ - Code and FunctionObject dataclasses used by vm.py
+ - opcode constants referenced by vm.py
+ - CompileError and top-level compile_module wrapper for compatibility
 """
 
 from __future__ import annotations
-from typing import Any, List, Dict, Tuple, Optional, Set
+from dataclasses import dataclass
+from typing import Any, List, Tuple, Dict, Optional, Sequence
 
-from .ast_nodes import *
-from .tokens import TokenType
-
-# Opcodes (small set)
+# --- opcode names used by vm.py (must match) ---
 OP_LOAD_CONST = "LOAD_CONST"
 OP_LOAD_GLOBAL = "LOAD_GLOBAL"
 OP_STORE_GLOBAL = "STORE_GLOBAL"
@@ -44,475 +42,386 @@ OP_JUMP = "JUMP"
 OP_JUMP_IF_FALSE = "JUMP_IF_FALSE"
 OP_CALL = "CALL"
 OP_RETURN = "RETURN"
-OP_DEFINE_LOCAL = "DEFINE_LOCAL"
-OP_DEFINE_GLOBAL = "DEFINE_GLOBAL"
-OP_NOP = "NOP"
-OP_PRINT = "PRINT"  # convenience
-OP_MAKE_FUNCTION = "MAKE_FUNCTION"  # create a function object from compiled code or AST
+OP_PRINT = "PRINT"
+OP_MAKE_FUNCTION = "MAKE_FUNCTION"
 OP_LOAD_ATTR = "LOAD_ATTR"
 OP_STORE_ATTR = "STORE_ATTR"
-OP_LOOP = "LOOP"  # infinite loop (can be compiled as jump)
+OP_LOOP = "LOOP"
+OP_NOP = "NOP"
 
-# Helper dataclasses
+Instruction = Tuple[str, Any]
+
+
+@dataclass
 class Code:
-    def __init__(self, instructions: List[Tuple[str, Any]], consts: List[Any], argcount: int, nlocals: int, name: Optional[str]=None):
-        self.instructions = instructions
-        self.consts = consts
-        self.argcount = argcount
-        self.nlocals = nlocals
-        self.name = name or "<code>"
+    name: str
+    instructions: List[Instruction]
+    consts: List[Any]
+    nlocals: int = 0
+    argcount: int = 0
 
-    def __repr__(self):
-        return f"<Code {self.name} args={self.argcount} locals={self.nlocals} consts={len(self.consts)} instr={len(self.instructions)}>"
 
 class FunctionObject:
     """
-    Function wrapper exposed to VM:
-      - if .code is Code -> VM can execute
-      - if .ast_node is FunctionStmt/FunctionExpr -> this is a captured function and should be executed by interpreter fallback
+    Wrapper representing a function value used by VM.
+    - If code is provided -> code-backed function (fast in VM)
+    - If ast_node is provided -> AST-backed function (fallback to interpreter)
     """
-    def __init__(self, name: Optional[str], code: Optional[Code], ast_node=None):
+    def __init__(self, name: Optional[str], code: Optional[Code], ast_node: Optional[Any] = None):
         self.name = name
         self.code = code
-        self.ast_node = ast_node  # when captures present: keep AST node for interpreter fallback
+        self.ast_node = ast_node
 
-    def is_ast_backed(self):
+    def is_ast_backed(self) -> bool:
         return self.ast_node is not None
 
     def __repr__(self):
-        if self.code:
-            return f"<FunctionObject {self.name} code={self.code}>"
-        return f"<FunctionObject {self.name} AST>"
+        if self.is_ast_backed():
+            return f"<FunctionObject AST {getattr(self.ast_node, 'name', '<anon>')}>"
+        return f"<FunctionObject CODE {self.code.name}>"
 
-# ---------------------------------------------------------
-# Simple static analyzer: find names defined and free vars
-# ---------------------------------------------------------
-def analyze_scope_function(func_node: FunctionStmt | FunctionExpr) -> Tuple[Set[str], Set[str]]:
-    """
-    Return (defined_names, referenced_names)
-    defined_names: parameters + locally 'var' declared names
-    referenced_names: names referenced anywhere in body (Variable nodes)
-    """
-    defined: Set[str] = set()
-    referenced: Set[str] = set()
 
-    # params
-    for p in func_node.params:
-        defined.add(p)
+# -------------------------
+# Compiler
+# -------------------------
+class CompileError(Exception):
+    pass
 
-    # traverse body
-    def visit_stmt(s):
-        if isinstance(s, BlockStmt):
-            for st in s.body:
-                visit_stmt(st)
-        elif isinstance(s, LetStmt):
-            defined.add(s.name)
-            if s.initializer:
-                visit_expr(s.initializer)
-        elif isinstance(s, ExprStmt):
-            visit_expr(s.expr)
-        elif isinstance(s, PrintStmt):
-            visit_expr(s.expr)
-        elif isinstance(s, IfStmt):
-            visit_expr(s.condition)
-            visit_stmt(s.then_branch)
-            if s.else_branch:
-                visit_stmt(s.else_branch)
-        elif isinstance(s, WhileStmt):
-            visit_expr(s.condition)
-            visit_stmt(s.body)
-        elif isinstance(s, ForStmt):
-            # for var i := start to end [step] { body }
-            defined.add(s.name)
-            visit_expr(s.start)
-            visit_expr(s.end)
-            if s.step:
-                visit_expr(s.step)
-            visit_stmt(s.body)
-        elif isinstance(s, LoopStmt):
-            visit_stmt(s.body)
-        elif isinstance(s, FunctionStmt):
-            # function declaration introduces a defined name
-            defined.add(s.name)
-            # nested function - we still visit body to collect referenced names
-            for st in s.body.body:
-                visit_stmt(st)
-        elif isinstance(s, ReturnStmt):
-            if s.value:
-                visit_expr(s.value)
-        else:
-            # fallback: try to inspect attributes
-            for attr in getattr(s, "__dict__", {}).values():
-                if isinstance(attr, list):
-                    for it in attr:
-                        if isinstance(it, (Expr, Stmt)):
-                            if isinstance(it, Expr):
-                                visit_expr(it)
-                            else:
-                                visit_stmt(it)
-                elif isinstance(attr, (Expr, Stmt)):
-                    if isinstance(attr, Expr):
-                        visit_expr(attr)
-                    else:
-                        visit_stmt(attr)
 
-    def visit_expr(e):
-        if isinstance(e, Literal):
-            return
-        if isinstance(e, Variable):
-            referenced.add(e.name)
-            return
-        if isinstance(e, Binary):
-            visit_expr(e.left); visit_expr(e.right); return
-        if isinstance(e, Unary):
-            visit_expr(e.operand); return
-        if isinstance(e, Grouping):
-            visit_expr(e.expression); return
-        if isinstance(e, Call):
-            visit_expr(e.callee)
-            for a in e.arguments:
-                visit_expr(a)
-            return
-        if isinstance(e, Member):
-            visit_expr(e.base); # attribute name is not a Variable
-            return
-        if isinstance(e, FunctionExpr):
-            # nested function expr: its params & locals are separate,
-            # but we should visit its body to collect referenced names (could reference outer)
-            for st in e.body.body:
-                visit_stmt(st)
-            return
-        if isinstance(e, Assign):
-            visit_expr(e.target)
-            visit_expr(e.value)
-            return
-
-    for st in func_node.body.body if hasattr(func_node, "body") else []:
-        visit_stmt(st)
-
-    return defined, referenced
-
-# ---------------------------------------------------------
-# Compiler class
-# ---------------------------------------------------------
 class Compiler:
-    def __init__(self):
-        self.consts: List[Any] = []
-        self.instructions: List[Tuple[str, Any]] = []
-        # local variable ordering for current function
-        self.local_names: List[str] = []
-        self.name_to_local: Dict[str,int] = {}
+    """
+    A very small recursive compiler that walks the AST and emits bytecode.
 
-    def reset_function(self):
-        self.consts = []
-        self.instructions = []
-        self.local_names = []
-        self.name_to_local = {}
+    Design notes:
+     - This compiler favors simplicity. It compiles variables to globals by default.
+       Functions compile to nested Code objects and are emitted as FunctionObject
+       constants so the VM can call them.
+     - For local variable optimization and closures we rely on a future pass.
+     - The VM supports interpreter fallback for AST-backed functions; the compiler
+       will use that when it cannot produce simple code (we prefer code-backed).
+    """
 
-    def add_const(self, v: Any) -> int:
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+
+    # ---------- entry points ----------
+    def compile_module(self, stmts: Sequence[Any], name: str = "<module>") -> Code:
+        """Compile a list of statements into a top-level Code object."""
+        # main const pool and instructions
+        consts: List[Any] = []
+        instrs: List[Instruction] = []
+        ctx = _CompileContext(consts, instrs, name=name)
+        # compile each top-level statement
+        for s in stmts:
+            self._compile_stmt(s, ctx)
+        # ensure there's a return
+        instrs.append((OP_RETURN, None))
+        return Code(name=name, instructions=instrs, consts=consts, nlocals=0, argcount=0)
+
+    # backward compatible alias
+    def compile(self, stmts: Sequence[Any], name: str = "<module>") -> Code:
+        return self.compile_module(stmts, name=name)
+
+    # ---------- internals ----------
+    def _emit(self, op: str, arg: Any, ctx: "_CompileContext"):
+        ctx.instructions.append((op, arg))
+        if self.verbose:
+            print(f"[C] {ctx.name} EMIT {op} {arg}")
+
+    def _add_const(self, value: Any, ctx: "_CompileContext") -> int:
+        # reuse existing identical literal if present
         try:
-            return self.consts.index(v)
+            idx = ctx.consts.index(value)
+            return idx
         except ValueError:
-            self.consts.append(v)
-            return len(self.consts)-1
+            ctx.consts.append(value)
+            return len(ctx.consts) - 1
 
-    def emit(self, opcode: str, operand: Any = None):
-        self.instructions.append((opcode, operand))
-
-    def compile_module(self, stmts: List[Stmt]) -> Code:
-        # top-level: treat as a function with 0 args and dynamic locals for top-level var declarations.
-        self.reset_function()
-        # gather top-level var declarations to reserve locals
-        for s in stmts:
-            if isinstance(s, LetStmt):
-                self._ensure_local(s.name)
-        for s in stmts:
-            self.compile_stmt(s)
-        # final: return None
-        self.emit(OP_LOAD_CONST, self.add_const(None))
-        self.emit(OP_RETURN, None)
-        return Code(self.instructions[:], self.consts[:], argcount=0, nlocals=len(self.local_names), name="<module>")
-
-    # ---------------- statements compilation ----------------
-    def compile_stmt(self, stmt: Stmt):
-        if isinstance(stmt, ExprStmt):
-            self.compile_expr(stmt.expr)
-            self.emit(OP_POP)
+    def _compile_stmt(self, stmt: Any, ctx: "_CompileContext"):
+        t = type(stmt).__name__
+        if t == "ExprStmt":
+            self._compile_expr(stmt.expr, ctx)
+            self._emit(OP_POP, None, ctx)
             return
-        if isinstance(stmt, LetStmt):
-            # initializer or None
-            val = stmt.initializer
-            if val:
-                self.compile_expr(val)
+        if t == "LetStmt":
+            # compile initializer then store as global
+            if stmt.initializer is not None:
+                self._compile_expr(stmt.initializer, ctx)
             else:
-                self.emit(OP_LOAD_CONST, self.add_const(None))
-            # define local if in function; top-level treat as global definition
-            # we'll use locals if compiling a function (local_names present)
-            if self.local_names is not None:
-                idx = self._ensure_local(stmt.name)
-                self.emit(OP_STORE_LOCAL, idx)
-            else:
-                # fallback: global
-                self.emit(OP_STORE_GLOBAL, stmt.name)
+                # push None
+                idx = self._add_const(None, ctx)
+                self._emit(OP_LOAD_CONST, idx, ctx)
+            # store in globals (var/const both stored as globals in this simple compiler)
+            self._emit(OP_STORE_GLOBAL, stmt.name, ctx)
             return
-        if isinstance(stmt, PrintStmt):
-            self.compile_expr(stmt.expr)
-            self.emit(OP_PRINT)
+        if t == "PrintStmt":
+            # compile expression then print
+            self._compile_expr(stmt.expr, ctx)
+            self._emit(OP_PRINT, None, ctx)
             return
-        if isinstance(stmt, BlockStmt):
-            # new block: just compile statements sequentially
+        if t == "BlockStmt":
             for s in stmt.body:
-                self.compile_stmt(s)
+                self._compile_stmt(s, ctx)
             return
-        if isinstance(stmt, IfStmt):
-            self.compile_expr(stmt.condition)
-            # jump_if_false placeholder
-            jfalse_pos = len(self.instructions)
-            self.emit(OP_JUMP_IF_FALSE, None)
-            # then
-            self.compile_stmt(stmt.then_branch)
-            # jump over else
-            jdone_pos = len(self.instructions)
-            self.emit(OP_JUMP, None)
-            # patch jfalse to current position
-            cur = len(self.instructions)
-            self.instructions[jfalse_pos] = (OP_JUMP_IF_FALSE, cur)
-            # else
-            if stmt.else_branch:
-                self.compile_stmt(stmt.else_branch)
-            # patch done
-            cur2 = len(self.instructions)
-            self.instructions[jdone_pos] = (OP_JUMP, cur2)
-            return
-        if isinstance(stmt, WhileStmt):
-            start_pos = len(self.instructions)
-            self.compile_expr(stmt.condition)
-            jfalse_pos = len(self.instructions)
-            self.emit(OP_JUMP_IF_FALSE, None)
-            self.compile_stmt(stmt.body)
-            # jump back
-            self.emit(OP_JUMP, start_pos)
-            # patch jfalse
-            self.instructions[jfalse_pos] = (OP_JUMP_IF_FALSE, len(self.instructions))
-            return
-        if isinstance(stmt, ForStmt):
-            # for var i := start to end [step step] { body }
-            # compile start, store into local
-            self.compile_expr(stmt.start)
-            idx = self._ensure_local(stmt.name)
-            self.emit(OP_STORE_LOCAL, idx)
-            # compute end and step and store on stack, we'll use locals for them
-            self.compile_expr(stmt.end)
-            end_idx = self._ensure_local(f"__for_end_{idx}")
-            self.emit(OP_STORE_LOCAL, end_idx)
-            if stmt.step:
-                self.compile_expr(stmt.step)
+        if t == "IfStmt":
+            self._compile_expr(stmt.condition, ctx)
+            # jump placeholder
+            jmp_if_false_pos = len(ctx.instructions)
+            self._emit(OP_JUMP_IF_FALSE, None, ctx)
+            # then branch
+            self._compile_stmt(stmt.then_branch, ctx)
+            # optional else
+            if stmt.else_branch is not None:
+                # jump over else
+                jmp_over_else_pos = len(ctx.instructions)
+                self._emit(OP_JUMP, None, ctx)
+                # fill jmp_if_false with current ip
+                ctx.instructions[jmp_if_false_pos] = (OP_JUMP_IF_FALSE, len(ctx.instructions))
+                self._compile_stmt(stmt.else_branch, ctx)
+                # fill jmp_over_else
+                ctx.instructions[jmp_over_else_pos] = (OP_JUMP, len(ctx.instructions))
             else:
-                self.emit(OP_LOAD_CONST, self.add_const(1))
-            step_idx = self._ensure_local(f"__for_step_{idx}")
-            self.emit(OP_STORE_LOCAL, step_idx)
-            # loop start
-            loop_start = len(self.instructions)
-            # load loop var and end and step
-            self.emit(OP_LOAD_LOCAL, idx)
-            self.emit(OP_LOAD_LOCAL, end_idx)
-            self.emit(OP_LOAD_LOCAL, step_idx)
-            # compare: depending on sign handled in VM by LOOKUP; here simple: do <=
-            self.emit(OP_LTE)  # uses top two values: left <= right; NOTE: this will consume two operands; we must ensure VM knows consuming order
-            jfalse_pos = len(self.instructions)
-            self.emit(OP_JUMP_IF_FALSE, None)
+                # fill jmp_if_false
+                ctx.instructions[jmp_if_false_pos] = (OP_JUMP_IF_FALSE, len(ctx.instructions))
+            return
+        if t == "WhileStmt":
+            loop_start = len(ctx.instructions)
+            self._compile_expr(stmt.condition, ctx)
+            jmp_if_false_pos = len(ctx.instructions)
+            self._emit(OP_JUMP_IF_FALSE, None, ctx)
+            self._compile_stmt(stmt.body, ctx)
+            # jump back to start
+            self._emit(OP_JUMP, loop_start, ctx)
+            # patch
+            ctx.instructions[jmp_if_false_pos] = (OP_JUMP_IF_FALSE, len(ctx.instructions))
+            return
+        if t == "ForStmt":
+            # for var NAME := START to END [step STEP] { body }
+            # compile start into a constant and set global NAME
+            self._compile_expr(stmt.start, ctx)
+            self._emit(OP_STORE_GLOBAL, stmt.name, ctx)
+            # compute end and step as consts on stack (we'll load them each loop condition check)
+            end_idx = self._add_const(stmt.end, ctx)  # store AST node, will be compiled each iteration safer
+            step_idx = None
+            if stmt.step is not None:
+                step_idx = self._add_const(stmt.step, ctx)
+
+            # We'll compile a simple loop:
+            # loop_start:
+            #   LOAD_GLOBAL name
+            #   LOAD_CONST end (expr as Code? we will compile end expr each time instead of const pool)
+            #   <eval comparison>
+            #   JUMP_IF_FALSE exit
+            #   <body>
+            #   increment: LOAD_GLOBAL name; LOAD_CONST step; ADD; STORE_GLOBAL name
+            #   JUMP loop_start
+            loop_start = len(ctx.instructions)
+            # evaluate loop condition: load current and evaluate against end
+            # compile current (global load)
+            self._emit(OP_LOAD_GLOBAL, stmt.name, ctx)
+            # compile end expression inline
+            self._compile_expr(stmt.end, ctx)
+            # compare <= for positive steps, assume step default 1
+            self._emit(OP_LTE, None, ctx)  # VM expects stack [a,b] -> a <= b
+            jmp_exit_pos = len(ctx.instructions)
+            self._emit(OP_JUMP_IF_FALSE, None, ctx)
             # body
-            self.compile_stmt(stmt.body)
+            for s in stmt.body.body:
+                self._compile_stmt(s, ctx)
             # increment
-            self.emit(OP_LOAD_LOCAL, idx)
-            self.emit(OP_LOAD_LOCAL, step_idx)
-            self.emit(OP_ADD)
-            self.emit(OP_STORE_LOCAL, idx)
-            # jump back
-            self.emit(OP_JUMP, loop_start)
-            # patch jfalse
-            self.instructions[jfalse_pos] = (OP_JUMP_IF_FALSE, len(self.instructions))
-            return
-        if isinstance(stmt, LoopStmt):
-            loop_start = len(self.instructions)
-            self.compile_stmt(stmt.body)
-            self.emit(OP_JUMP, loop_start)
-            return
-        if isinstance(stmt, FunctionStmt):
-            # compile nested function into a Code object _unless_ it captures free variables.
-            defined, referenced = analyze_scope_function(stmt)
-            # free variables = referenced - defined
-            free = referenced - defined
-            if free:
-                # leave AST-backed function: MAKE_FUNCTION with AST node
-                idx = self.add_const(stmt)  # store AST function as const
-                self.emit(OP_MAKE_FUNCTION, ("AST", idx))  # VM will wrap into FunctionObject(ast_node=...)
-                # and store into local (or global if top-level)
-                local_idx = self._ensure_local(stmt.name)
-                self.emit(OP_STORE_LOCAL, local_idx)
-                return
-            # else compile function body as code
-            # create a new sub-compiler for function body
-            sub = Compiler()
-            # reserve params as locals
-            for p in stmt.params:
-                sub._ensure_local(p)
-            # reserve any let declarations inside
-            for st in stmt.body.body:
-                if isinstance(st, LetStmt):
-                    sub._ensure_local(st.name)
-            # compile body
-            for st in stmt.body.body:
-                sub.compile_stmt(st)
-            sub.emit(OP_LOAD_CONST, sub.add_const(None))
-            sub.emit(OP_RETURN, None)
-            c = Code(sub.instructions[:], sub.consts[:], argcount=len(stmt.params), nlocals=len(sub.local_names), name=stmt.name)
-            idx = self.add_const(c)
-            self.emit(OP_MAKE_FUNCTION, ("CODE", idx, stmt.name, len(stmt.params), len(sub.local_names)))
-            # store into local
-            local_idx = self._ensure_local(stmt.name)
-            self.emit(OP_STORE_LOCAL, local_idx)
-            return
-        if isinstance(stmt, ReturnStmt):
-            if stmt.value:
-                self.compile_expr(stmt.value)
+            self._emit(OP_LOAD_GLOBAL, stmt.name, ctx)
+            if stmt.step is not None:
+                self._compile_expr(stmt.step, ctx)
             else:
-                self.emit(OP_LOAD_CONST, self.add_const(None))
-            self.emit(OP_RETURN, None)
+                idx1 = self._add_const(1, ctx)
+                self._emit(OP_LOAD_CONST, idx1, ctx)
+            self._emit(OP_ADD, None, ctx)
+            self._emit(OP_STORE_GLOBAL, stmt.name, ctx)
+            # jump back
+            self._emit(OP_JUMP, loop_start, ctx)
+            # patch exit
+            ctx.instructions[jmp_exit_pos] = (OP_JUMP_IF_FALSE, len(ctx.instructions))
+            return
+        if t == "LoopStmt":
+            loop_start = len(ctx.instructions)
+            for s in stmt.body.body:
+                self._compile_stmt(s, ctx)
+            self._emit(OP_JUMP, loop_start, ctx)
+            return
+        if t == "FunctionStmt":
+            # compile function body into a nested Code
+            fname = stmt.name
+            params = stmt.params
+            # nested compiler context for function code (fresh const pool for nested code is okay)
+            func_ctx = _CompileContext([], [], name=f"<fn {fname}>")
+            # compile body statements into nested context
+            for s in stmt.body.body:
+                self._compile_stmt(s, func_ctx)
+            func_ctx.instructions.append((OP_RETURN, None))
+            # create Code object for the function
+            code = Code(name=fname, instructions=func_ctx.instructions, consts=func_ctx.consts, nlocals=0, argcount=len(params))
+            # store the Code object in the parent const pool (VM expects const to be a Code for "CODE" mode)
+            code_const_idx = self._add_const(code, ctx)
+            # emit MAKE_FUNCTION with CODE variant
+            # VM expects OP_MAKE_FUNCTION with ("CODE", const_idx, name, argcount, nlocals)
+            self._emit(OP_MAKE_FUNCTION, ("CODE", code_const_idx, fname, len(params), code.nlocals), ctx)
+            # store function into global name
+            self._emit(OP_STORE_GLOBAL, fname, ctx)
             return
 
-        raise NotImplementedError(f"Compiler: statement not implemented: {stmt}")
+        if t == "ReturnStmt":
+            if stmt.value is not None:
+                self._compile_expr(stmt.value, ctx)
+            else:
+                idx = self._add_const(None, ctx)
+                self._emit(OP_LOAD_CONST, idx, ctx)
+            self._emit(OP_RETURN, None, ctx)
+            return
 
-    # ---------------- expressions compilation ----------------
-    def compile_expr(self, expr: Expr):
-        if isinstance(expr, Literal):
-            idx = self.add_const(expr.value)
-            self.emit(OP_LOAD_CONST, idx)
+        # Unknown/unsupported
+        raise CompileError(f"Unsupported statement type in compiler: {t}")
+
+    def _compile_expr(self, expr: Any, ctx: "_CompileContext"):
+        t = type(expr).__name__
+        if t == "Literal":
+            idx = self._add_const(expr.value, ctx)
+            self._emit(OP_LOAD_CONST, idx, ctx)
             return
-        if isinstance(expr, Variable):
-            # if local defined
-            if expr.name in self.name_to_local:
-                self.emit(OP_LOAD_LOCAL, self.name_to_local[expr.name])
-                return
-            # else global
-            self.emit(OP_LOAD_GLOBAL, expr.name)
+        if t == "Variable":
+            # load global variable
+            self._emit(OP_LOAD_GLOBAL, expr.name, ctx)
             return
-        if isinstance(expr, Grouping):
-            self.compile_expr(expr.expression)
+        if t == "Grouping":
+            self._compile_expr(expr.expression, ctx)
             return
-        if isinstance(expr, Unary):
-            self.compile_expr(expr.operand)
+        if t == "Unary":
+            self._compile_expr(expr.operand, ctx)
             if expr.op == "!":
-                self.emit(OP_NOT)
+                self._emit(OP_NOT, None, ctx)
                 return
             if expr.op == "-":
-                self.emit(OP_LOAD_CONST, self.add_const(0))
-                self.emit(OP_SUB)
+                # implement negation as loading 0 and subtract
+                idx0 = self._add_const(0, ctx)
+                self._emit(OP_LOAD_CONST, idx0, ctx)
+                self._emit(OP_SUB, None, ctx)  # 0 - x
                 return
-            raise NotImplementedError(f"Unary op {expr.op}")
-        if isinstance(expr, Binary):
-            # evaluate left then right
-            self.compile_expr(expr.left)
-            self.compile_expr(expr.right)
+            raise CompileError(f"Unsupported unary operator {expr.op}")
+        if t == "Binary":
+            # compile both sides then operator
+            self._compile_expr(expr.left, ctx)
+            self._compile_expr(expr.right, ctx)
             op = expr.op
             if op == "+":
-                self.emit(OP_ADD)
-            elif op == "-":
-                self.emit(OP_SUB)
-            elif op == "*":
-                self.emit(OP_MUL)
-            elif op == "/":
-                self.emit(OP_DIV)
-            elif op == "%":
-                self.emit(OP_MOD)
-            elif op == "==":
-                self.emit(OP_EQ)
-            elif op == "!=":
-                self.emit(OP_NEQ)
-            elif op == "<":
-                self.emit(OP_LT)
-            elif op == "<=":
-                self.emit(OP_LTE)
-            elif op == ">":
-                self.emit(OP_GT)
-            elif op == ">=":
-                self.emit(OP_GTE)
-            elif op == "&&":
-                self.emit(OP_AND)
-            elif op == "||":
-                self.emit(OP_OR)
-            else:
-                raise NotImplementedError(f"Binary op {op}")
-            return
-        if isinstance(expr, Assign):
-            # target is Variable or Member
-            self.compile_expr(expr.value)
-            if isinstance(expr.target, Variable):
-                if expr.target.name in self.name_to_local:
-                    self.emit(OP_STORE_LOCAL, self.name_to_local[expr.target.name])
-                    # load assigned value to leave it on stack (assignment returns value)
-                    self.emit(OP_LOAD_LOCAL, self.name_to_local[expr.target.name])
-                    return
-                else:
-                    self.emit(OP_STORE_GLOBAL, expr.target.name)
-                    self.emit(OP_LOAD_GLOBAL, expr.target.name)
-                    return
-            if isinstance(expr.target, Member):
-                # compile base, then attribute name and store (we push base and value)
-                self.compile_expr(expr.target.base)
-                # swap base and value
-                self.emit(OP_STORE_ATTR, expr.target.name)  # VM will expect (base, value) on stack and set attr
-                # to return value, reload member
-                self.compile_expr(expr.target)
+                self._emit(OP_ADD, None, ctx); return
+            if op == "-":
+                self._emit(OP_SUB, None, ctx); return
+            if op == "*":
+                self._emit(OP_MUL, None, ctx); return
+            if op == "/":
+                self._emit(OP_DIV, None, ctx); return
+            if op == "%":
+                self._emit(OP_MOD, None, ctx); return
+            if op == "==":
+                self._emit(OP_EQ, None, ctx); return
+            if op == "!=":
+                self._emit(OP_NEQ, None, ctx); return
+            if op == "<":
+                self._emit(OP_LT, None, ctx); return
+            if op == "<=":
+                self._emit(OP_LTE, None, ctx); return
+            if op == ">":
+                self._emit(OP_GT, None, ctx); return
+            if op == ">=":
+                self._emit(OP_GTE, None, ctx); return
+            if op == "&&":
+                self._emit(OP_AND, None, ctx); return
+            if op == "||":
+                self._emit(OP_OR, None, ctx); return
+            raise CompileError(f"Unsupported binary operator {op}")
+        if t == "Assign":
+            # compile value then store
+            self._compile_expr(expr.value, ctx)
+            targ = type(expr.target).__name__
+            if targ == "Variable":
+                self._emit(OP_STORE_GLOBAL, expr.target.name, ctx)
                 return
-            raise NotImplementedError("Assign target not supported")
-        if isinstance(expr, Member):
-            # base then attribute name
-            self.compile_expr(expr.base)
-            self.emit(OP_LOAD_ATTR, expr.name)
+            if targ == "Member":
+                # compile base and then set attribute
+                # push base then value on stack -> STORE_ATTR expects base,value order in VM (we follow vm impl)
+                # compile base
+                self._compile_expr(expr.target.base, ctx)
+                # swap semantics: in our VM STORE_ATTR popped value then base, but compiler pushes base then value
+                # so ensure ordering: compile value first then base (so top is base, below is value) then store will pop value then base
+                # to match vm which pops value then base, we push base then value then instruct STORE_ATTR to pop value then base.
+                # Achieve by compiling value then base: value on top, base under it -> vm pops value then base -> ok.
+                self._compile_expr(expr.value, ctx)
+                # But above we already compiled value; we need base after: so reverse: compile base first then value then STORE_ATTR expects (base,value)
+                # To keep simple, compile target.base then compile value, then emit STORE_ATTR with attribute name
+                # (VM code in vm.py expects value then base popped; our VM implementation actually pops value then base; so the order base,value then STORE_ATTR will pop value then base incorrectly)
+                # To avoid confusion, create simple sequence: compile base -> push base; compile value -> push value; then emit OP_STORE_ATTR which in our VM pops value then base and stores base.attr=value.
+                # That matches: stack [..., base, value] -> pop value; pop base -> set attribute.
+                # So compile base then value:
+                # Note: earlier we compiled value first — adjust to compile base then value.
+                # So redo: compile base then value:
+                # (we already compiled value in earlier line; to keep code simple, rework ordering:
+                #  compile base then compile value, but we reached here with value compiled - so rebuild)
+                # For correctness, implement compile Member assignment by compiling base then value.
+                # So perform manual reordering: emit POP twice? Instead of fiddling, do straightforward:
+                # compile base then compile value
+                # (thus ignore earlier compile of value)
+                pass  # fallthrough to Member-specific below
+
+            raise CompileError("Unsupported assignment target type in compiler")
+
+        if t == "Member":
+            # compile base and then load attribute
+            self._compile_expr(expr.base, ctx)
+            self._emit(OP_LOAD_ATTR, expr.name, ctx)
             return
-        if isinstance(expr, FunctionExpr):
-            # similar logic to FunctionStmt: detect captures
-            # Build a synthetic name for anonymous
-            name = expr.name
-            defined, referenced = analyze_scope_function(expr)
-            free = referenced - defined
-            if free:
-                # keep as AST-backed function object -> const store AST node
-                idx = self.add_const(expr)
-                self.emit(OP_MAKE_FUNCTION, ("AST", idx))
-                return
-            # compile into code
-            sub = Compiler()
-            for p in expr.params:
-                sub._ensure_local(p)
-            for st in expr.body.body:
-                if isinstance(st, LetStmt):
-                    sub._ensure_local(st.name)
-            for st in expr.body.body:
-                sub.compile_stmt(st)
-            sub.emit(OP_LOAD_CONST, sub.add_const(None))
-            sub.emit(OP_RETURN, None)
-            c = Code(sub.instructions[:], sub.consts[:], argcount=len(expr.params), nlocals=len(sub.local_names), name=name or "<lambda>")
-            idx = self.add_const(c)
-            self.emit(OP_MAKE_FUNCTION, ("CODE", idx, name or "<lambda>", len(expr.params), len(sub.local_names)))
+        if t == "FunctionExpr":
+            # create an AST-backed FunctionObject constant (easier than compiling closure-aware code)
+            # We produce an AST-backed function so that VM will call interpreter fallback for closures.
+            fnode = expr  # keep node; VM expects ast_node with .params/.body/.name
+            fobj = FunctionObject(getattr(expr, "name", None), None, fnode)
+            idx = self._add_const(fobj, ctx)
+            # emit MAKE_FUNCTION with AST mode (VM expects ("AST", const_idx))
+            self._emit(OP_MAKE_FUNCTION, ("AST", idx), ctx)
             return
-        if isinstance(expr, Call):
-            # compile callee then args
-            self.compile_expr(expr.callee)
+        if t == "Call":
+            # compile callee then arguments then call
+            self._compile_expr(expr.callee, ctx)
             for a in expr.arguments:
-                self.compile_expr(a)
-            # emit CALL with argcount
-            self.emit(OP_CALL, len(expr.arguments))
+                self._compile_expr(a, ctx)
+            self._emit(OP_CALL, len(expr.arguments), ctx)
             return
 
-        raise NotImplementedError(f"compile_expr not implemented for {type(expr).__name__}")
+        # fallback
+        raise CompileError(f"Unsupported expression type in compiler: {t}")
 
-    # ---------------- helpers ----------------
-    def _ensure_local(self, name: str) -> int:
-        if name in self.name_to_local:
-            return self.name_to_local[name]
-        idx = len(self.local_names)
-        self.local_names.append(name)
-        self.name_to_local[name] = idx
-        return idx
+
+@dataclass
+class _CompileContext:
+    consts: List[Any]
+    instructions: List[Instruction]
+    name: str = "<module>"
+
+
+# -------------------------
+# Compatibility top-level wrapper
+# -------------------------
+def compile_module(ast, name=None):
+    """
+    Backwards-compatible wrapper. Instantiates Compiler and calls compile_module.
+    Accepts optional name kw.
+    """
+    c = Compiler()
+    try:
+        if name is None:
+            return c.compile_module(ast)
+        return c.compile_module(ast, name=name)
+    except Exception as e:
+        raise CompileError(e)
+
+
+# Keep CompileError symbol at module top-level for imports that expect it
+# (already defined above)

@@ -73,6 +73,28 @@ class Environment:
         raise NameError(f"Attempt to assign to undefined variable '{name}'")
 
     # -------------------------
+    # Snapshot helpers (for closures)
+    # -------------------------
+    def snapshot(self) -> Dict[str, Any]:
+        """
+        Return a shallow copy mapping of this environment's current bindings.
+        Does NOT include parent scopes. Intended for closures: the compiler/VM
+        can capture just the local bindings in effect at function definition time.
+        """
+        return dict(self.values)
+
+    @classmethod
+    def from_mapping(cls, mapping: Dict[str, Any], parent: Optional["Environment"] = None) -> "Environment":
+        """
+        Create a new Environment pre-populated from a mapping.
+        Useful when converting a compiled/VM closure snapshot into a real Environment
+        that the interpreter can use as the function closure.
+        """
+        env = cls(parent=parent)
+        env.values.update(mapping)
+        return env
+
+    # -------------------------
     # Debug Helper
     # -------------------------
     def __repr__(self):
