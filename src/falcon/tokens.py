@@ -1,3 +1,4 @@
+# file: src/falcon/tokens.py
 from enum import Enum, auto
 from dataclasses import dataclass
 
@@ -28,21 +29,25 @@ class TokenType(Enum):
     ANDAND = auto()    # &&
     OROR = auto()      # ||
 
+    # --- Declaration / method operators (language-specific) ---
+    DECL = auto()          # :=  (declaration)
+    METHODCOLON = auto()   # ::  (method colon / custom operator)
+
     # --- Literals ---
     IDENT = auto()
     NUMBER = auto()
     STRING = auto()
 
-    # --- Keywords ---
-    VAR = auto()
-    CONST = auto()
+    # --- Keywords (language) ---
+    VAR = auto()        # var
+    CONST = auto()      # const
     IF = auto()
     ELSE = auto()
     WHILE = auto()
     FOR = auto()
     LOOP = auto()
-    TO = auto()
-    STEP = auto()
+    TO = auto()         # to (for .. to ..)
+    STEP = auto()       # step (for .. step)
     TRUE = auto()
     FALSE = auto()
     NULL = auto()
