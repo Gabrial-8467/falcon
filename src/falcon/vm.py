@@ -251,34 +251,27 @@ class VM:
                 argc = arg
                 args = [pop() for _ in range(argc)][::-1]
                 callee = pop()
-                # If FunctionObject and code-backed -> create new frame and run
+
+                # 1) VM code-backed function objects (our FunctionObject)
                 if isinstance(callee, FunctionObject):
                     if callee.is_ast_backed():
                         # delegate to interpreter fallback (ensures closures work)
                         try:
-                            # Interp needs a FunctionStmt/FunctionExpr; use interpreter API to call it
-                            # We'll expect interpreter to expose a call_function-like ability:
-                            # For simplicity, call interpreter.interpret on a small wrapper:
-                            # Build a synthetic call: create a FunctionStmt/Expr and run with interpreter
-                            # We assume Interpreter has a method `call_function_ast(func_node, args)`
                             if hasattr(self.interpreter, "call_function_ast"):
                                 result = self.interpreter.call_function_ast(callee.ast_node, args)
                                 push(result)
                                 continue
-                            # Fallback: inject AST as top-level run (less ideal)
                             raise VMRuntimeError("Interpreter fallback call not implemented (no call_function_ast)")
                         except InterpreterError as e:
                             raise VMRuntimeError(f"Interpreter error: {e}") from e
                     else:
-                        # code-backed function: create new frame
+                        # code-backed function: execute its Code in a new frame
                         subcode: Code = callee.code
-                        # prepare locals: size = nlocals, fill with None, then set first argcount locals to args
                         locals_ = [None] * subcode.nlocals
                         for i, a in enumerate(args[:subcode.argcount]):
                             if i < len(locals_):
                                 locals_[i] = a
                         new_frame = Frame(subcode, frame.globals, locals_, name=subcode.name)
-                        # push current frame and run new one
                         self.frames.append(new_frame)
                         try:
                             result = self.run_frame(new_frame)
@@ -286,7 +279,26 @@ class VM:
                             self.frames.pop()
                         push(result)
                         continue
-                # If callee is a Python callable (builtin)
+
+                # 2) Interpreter runtime functions (created by AST interpreter)
+                #    e.g., instances of falcon.interpreter.Function which expose .call(interpreter, args)
+                try:
+                    # duck-type: if object has 'call' attribute that's callable, use it.
+                    call_attr = getattr(callee, "call", None)
+                    if callable(call_attr):
+                        # interpreter.Function.call expects (interpreter, args_list)
+                        # We pass our fallback interpreter instance.
+                        try:
+                            result = call_attr(self.interpreter, args)
+                        except TypeError:
+                            # Some callables may expect plain args; try calling directly
+                            result = call_attr(*args)
+                        push(result)
+                        continue
+                except Exception as e:
+                    raise VMRuntimeError(f"Error calling interpreter function: {e}") from e
+
+                # 3) Python builtins / host callables
                 if callable(callee):
                     try:
                         res = callee(*args)
@@ -294,6 +306,8 @@ class VM:
                         continue
                     except Exception as e:
                         raise VMRuntimeError(f"Builtin call error: {e}") from e
+
+                # otherwise not callable
                 raise VMRuntimeError(f"Attempted to call non-callable: {callee}")
 
             if op == OP_RETURN:
