@@ -1,21 +1,28 @@
 # file: src/falcon/parser.py
 """
-Recursive-descent parser for Falcon (JS-like).
+Recursive-descent parser for Falcon.
 
 Produces a list of Stmt AST nodes from a token stream produced by lexer.Lexer.
-Supports assignment expressions (right-associative) and var/const declarations
-with the ':=' declaration operator (DECL). Backwards-compatible with 'let' and '='.
-Adds Falcon-specific `for` and `loop` statements and supports METHODCOLON `::` member access.
-"""
-from __future__ import annotations
 
+Grammar highlights handled here:
+  - var / const declarations (var NAME := expr or var NAME = expr)
+  - function declarations: function name(params) { ... }
+  - function expressions: function (name?) (params) { ... }
+  - for-loops: for var i := START to END [step STEP] { ... }
+  - infinite loops: loop { ... }
+  - if / while / return
+  - assignment expressions (right-associative)
+  - member access and calls (postfix)
+"""
+
+from __future__ import annotations
 from typing import List, Optional
+
 from .tokens import Token, TokenType
 from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
-    FunctionStmt, ReturnStmt,  # existing
-    ForStmt, LoopStmt,        # NEW: loop nodes
+    FunctionStmt, ReturnStmt, ForStmt, LoopStmt
 )
 from .precedence import PREC
 
@@ -35,9 +42,8 @@ class Parser:
             stmts.append(self._declaration())
         return stmts
 
-    # ---- top-level declarations ----
+    # ---------------- top-level ----------------
     def _declaration(self) -> Stmt:
-        # Accept legacy 'let' for backward compatibility, plus new 'var' and 'const'
         if self._match(TokenType.VAR):
             return self._var_or_const_declaration(is_const=False)
         if self._match(TokenType.CONST):
@@ -47,56 +53,59 @@ class Parser:
         return self._statement()
 
     def _var_or_const_declaration(self, is_const: bool) -> Stmt:
-        """
-        Parse:
-          var NAME := expr ;
-          const NAME := expr ;
-        Backwards compatible with:
-          let NAME = expr ;
-          var NAME = expr ;
-        """
         name_tok = self._consume(TokenType.IDENT, "Expect variable name after declaration")
         name = name_tok.lexeme
         initializer: Optional[Expr] = None
 
-        # Prefer ':=' (DECL) for new syntax, but accept '=' as fallback for compatibility.
+        # Prefer ':=' (DECL) new syntax, but accept '=' as fallback
         if self._match(TokenType.DECL):
             initializer = self._expression()
         elif self._match(TokenType.EQ):
             initializer = self._expression()
-        # semicolon optional
+
         self._optional_semicolon()
         return LetStmt(name, initializer, is_const=is_const)
 
     def _function_declaration(self) -> Stmt:
-        # we've consumed 'function'
         name_tok = self._consume(TokenType.IDENT, "Expect function name after 'function'")
         name = name_tok.lexeme
         params = self._parse_params()
         body = self._parse_block()
         return FunctionStmt(name, params, body)
 
-    # ---- statements ----
+    # ---------------- statements ----------------
     def _statement(self) -> Stmt:
-        
+        # return
         if self._match(TokenType.RETURN):
-            # return statement
             val: Optional[Expr] = None
             if not self._check(TokenType.SEMI) and not self._check(TokenType.RBRACE) and not self._is_at_end():
                 val = self._expression()
             self._optional_semicolon()
             return ReturnStmt(val)
+
+        # if
         if self._match(TokenType.IF):
             return self._if_statement()
+
+        # while
         if self._match(TokenType.WHILE):
             return self._while_statement()
+
+        # for-loop (Falcon style)
         if self._match(TokenType.FOR):
             return self._for_statement()
+
+        # loop (infinite)
         if self._match(TokenType.LOOP):
-            return self._loop_statement()
+            self._consume(TokenType.LBRACE, "Expect '{' after 'loop'")
+            body_stmts = self._block()
+            return LoopStmt(BlockStmt(body_stmts))
+
+        # block
         if self._match(TokenType.LBRACE):
             return BlockStmt(self._block())
-        # expression statement
+
+        # expression statement (calls, assignments, etc.)
         expr = self._expression()
         self._optional_semicolon()
         return ExprStmt(expr)
@@ -118,6 +127,40 @@ class Parser:
         body = self._block_or_statement()
         return WhileStmt(cond, body)
 
+    def _for_statement(self) -> Stmt:
+        """
+        Parse Falcon-style for:
+          for var i := START to END [step STEP] { ... }
+        """
+        # require 'var' in header (design choice); accept IDENT if user omitted
+        if self._match(TokenType.VAR):
+            name_tok = self._consume(TokenType.IDENT, "Expect iterator name in for-loop")
+        else:
+            # allow 'for i := ...' as permissive alternative
+            name_tok = self._consume(TokenType.IDENT, "Expect iterator name in for-loop")
+        iter_name = name_tok.lexeme
+
+        # expect declaration operator ':=' or '='
+        if self._match(TokenType.DECL):
+            start_expr = self._expression()
+        elif self._match(TokenType.EQ):
+            start_expr = self._expression()
+        else:
+            raise ParseError("Expect ':=' or '=' after iterator name in for-loop")
+
+        # expect 'to' keyword
+        self._consume(TokenType.TO, "Expect 'to' in for-loop header")
+        end_expr = self._expression()
+
+        # optional 'step' clause
+        step_expr: Optional[Expr] = None
+        if self._match(TokenType.STEP):
+            step_expr = self._expression()
+
+        # require block body
+        body = self._parse_block()
+        return ForStmt(iter_name, start_expr, end_expr, step_expr, body)
+
     def _block_or_statement(self) -> Stmt:
         if self._match(TokenType.LBRACE):
             return BlockStmt(self._block())
@@ -130,70 +173,14 @@ class Parser:
         self._consume(TokenType.RBRACE, "Expect '}' after block")
         return stmts
 
-    # ---- NEW: for / loop parsing ----
-    def _for_statement(self) -> Stmt:
-        """
-        Parse Falcon for syntax:
-          for var i := START to END [step STEP] { ... }
-        'var' is required to declare the loop variable (keeps semantics simple).
-        """
-        # require 'var' keyword for loop iterator declaration
-        if not self._match(TokenType.VAR):
-            raise ParseError("Expect 'var' in for-loop header (e.g. for var i := 0 to 10 { ... })")
-
-        name_tok = self._consume(TokenType.IDENT, "Expect loop variable name after 'var'")
-        name = name_tok.lexeme
-
-        # initializer: prefer ':=' (DECL) but accept '=' for compatibility
-        if self._match(TokenType.DECL):
-            start_expr = self._expression()
-        elif self._match(TokenType.EQ):
-            start_expr = self._expression()
-        else:
-            raise ParseError("Expect ':=' or '=' initializer in for-loop (e.g. var i := 0)")
-
-        # require 'to' keyword
-        self._consume(TokenType.TO, "Expect 'to' in for-loop header (e.g. to 10)")
-
-        end_expr = self._expression()
-
-        step_expr: Optional[Expr] = None
-        if self._match(TokenType.STEP):
-            step_expr = self._expression()
-
-        # body
-        body = self._block_or_statement()
-        # body is BlockStmt or Stmt; ensure BlockStmt for uniformity
-        if isinstance(body, BlockStmt):
-            block = body
-        else:
-            block = BlockStmt([body])
-
-        return ForStmt(name, start_expr, end_expr, step_expr, block)
-
-    def _loop_statement(self) -> Stmt:
-        """
-        Parse infinite loop:
-          loop { ... }
-        """
-        body = self._block_or_statement()
-        if isinstance(body, BlockStmt):
-            block = body
-        else:
-            block = BlockStmt([body])
-        return LoopStmt(block)
-
-    # ---- expressions (assignment + precedence climbing) ----
+    # ---------------- expressions ----------------
     def _expression(self) -> Expr:
         return self._assignment()
 
     def _assignment(self) -> Expr:
-        # Parse left-hand side as binary/expression
         expr = self._binary_expression(0)
-        # If there's an '=' token, parse right-hand side as assignment (right-associative)
         if self._match(TokenType.EQ):
             value = self._assignment()
-            # Only Variables and Members are valid assignment targets
             if isinstance(expr, Variable) or isinstance(expr, Member):
                 return Assign(expr, value)
             raise ParseError(f"Invalid assignment target at {self._previous()}")
@@ -217,7 +204,7 @@ class Parser:
                 break
             # consume operator
             self._advance()
-            # parse right-hand side with higher precedence for left-assoc
+            # parse right with precedence
             right = self._binary_expression(prec + 1)
             expr = Binary(expr, op_text, right)
         return expr
@@ -233,15 +220,12 @@ class Parser:
 
     def _postfix(self) -> Expr:
         """
-        Parse primary expressions then handle postfix operators:
-         - member access: .ident or ::ident
-         - function call: (arg, ...)
-        These can be chained: obj.fn(1).other() or obj::method(1)::other()
+        Handle primary expressions and chained postfix operations:
+         - call: (...) 
+         - member: .ident
         """
         expr = self._primary()
-
         while True:
-            # function call
             if self._match(TokenType.LPAREN):
                 args: List[Expr] = []
                 if not self._check(TokenType.RPAREN):
@@ -254,26 +238,22 @@ class Parser:
                 expr = Call(expr, args)
                 continue
 
-            # member access (dot or double-colon)
-            if self._match(TokenType.DOT) or self._match(TokenType.METHODCOLON):
-                name_tok = self._consume(TokenType.IDENT, "Expect property name after '.' or '::'")
+            if self._match(TokenType.DOT):
+                name_tok = self._consume(TokenType.IDENT, "Expect property name after '.'")
                 expr = Member(expr, name_tok.lexeme)
                 continue
 
             break
-
         return expr
 
     def _primary(self) -> Expr:
-        # function expression (anonymous or named)
+        # function expression
         if self._match(TokenType.FUNCTION):
-            # anonymous function expression or named function expression
             name: Optional[str] = None
             if self._check(TokenType.IDENT):
                 name = self._advance().lexeme
             params = self._parse_params()
             body = self._parse_block()
-            # function expression returns a FunctionExpr
             return FunctionExpr(name, params, body)
 
         if self._match(TokenType.NUMBER):
@@ -292,9 +272,10 @@ class Parser:
             expr = self._expression()
             self._consume(TokenType.RPAREN, "Expect ')' after expression")
             return Grouping(expr)
+
         raise ParseError(f"Unexpected token: {self._peek()}")
 
-    # ---- helpers ----
+    # ---------------- helpers ----------------
     def _parse_params(self) -> List[str]:
         self._consume(TokenType.LPAREN, "Expect '(' before parameter list")
         params: List[str] = []
@@ -309,11 +290,10 @@ class Parser:
         return params
 
     def _parse_block(self) -> BlockStmt:
-        # require a block for function bodies
         if not self._match(TokenType.LBRACE):
             raise ParseError("Expect '{' before function body")
-        body = self._block()
-        return BlockStmt(body)
+        body_stmts = self._block()
+        return BlockStmt(body_stmts)
 
     def _token_to_op(self, token: Token) -> Optional[str]:
         mapping = {
@@ -337,7 +317,7 @@ class Parser:
         raise ParseError(message + f" at {self._peek()}")
 
     def _optional_semicolon(self):
-        # Accept a semicolon if present; otherwise continue (semicolon optional).
+        # Accept semicolon if present; optional otherwise.
         if self._match(TokenType.SEMI):
             return
 
