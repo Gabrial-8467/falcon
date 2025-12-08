@@ -23,7 +23,6 @@ from .compiler import OP_AND, OP_OR, OP_NOT
 from .compiler import OP_JUMP, OP_JUMP_IF_FALSE, OP_CALL, OP_RETURN
 from .compiler import OP_PRINT, OP_MAKE_FUNCTION, OP_LOAD_ATTR, OP_STORE_ATTR, OP_LOOP, OP_NOP
 
-# We'll import remaining ops names if needed by string name lookups
 # Local small helper exceptions
 class VMRuntimeError(Exception):
     pass
@@ -81,6 +80,7 @@ class VM:
                 print(f"[VM] {frame.name}:{frame.ip} {op} {arg}  STACK={stack}")
             frame.ip += 1
 
+            # --- simple stack and local/global ops ---
             if op == OP_LOAD_CONST:
                 push(consts[arg])
                 continue
@@ -112,6 +112,7 @@ class VM:
                 pop()
                 continue
 
+            # --- arithmetic ---
             if op == OP_ADD:
                 b = pop(); a = pop()
                 try:
@@ -158,7 +159,7 @@ class VM:
                     ) from e
                 continue
 
-
+            # --- comparisons ---
             if op == OP_EQ:
                 b = pop(); a = pop(); push(a == b); continue
             if op == OP_NEQ:
@@ -172,6 +173,7 @@ class VM:
             if op == OP_GTE:
                 b = pop(); a = pop(); push(a >= b); continue
 
+            # --- logical ---
             if op == OP_AND:
                 b = pop(); a = pop(); push(a and b); continue
             if op == OP_OR:
@@ -179,7 +181,9 @@ class VM:
             if op == OP_NOT:
                 a = pop(); push(not a); continue
 
+            # --- control flow: jumps ---
             if op == OP_JUMP:
+                # arg is absolute instruction index
                 frame.ip = arg
                 continue
             if op == OP_JUMP_IF_FALSE:
@@ -188,6 +192,7 @@ class VM:
                     frame.ip = arg
                 continue
 
+            # --- IO / print ---
             if op == OP_PRINT:
                 val = pop()
                 # prefer show builtin if exists
@@ -196,11 +201,13 @@ class VM:
                     try:
                         show(val)
                     except Exception:
+                        # fallback to Python print if builtin failed
                         print(val)
                 else:
                     print(val)
                 continue
 
+            # --- function creation / call handling ---
             if op == OP_MAKE_FUNCTION:
                 mode = arg[0]
                 if mode == "AST":
@@ -222,7 +229,6 @@ class VM:
             if op == OP_LOAD_ATTR:
                 attr = arg
                 base = pop()
-                # dict-like
                 try:
                     if isinstance(base, dict):
                         push(base.get(attr, None))
@@ -247,6 +253,7 @@ class VM:
                     raise VMRuntimeError(f"Store attribute error: {e}") from e
                 continue
 
+            # --- call dispatch ---
             if op == OP_CALL:
                 argc = arg
                 args = [pop() for _ in range(argc)][::-1]
@@ -283,11 +290,8 @@ class VM:
                 # 2) Interpreter runtime functions (created by AST interpreter)
                 #    e.g., instances of falcon.interpreter.Function which expose .call(interpreter, args)
                 try:
-                    # duck-type: if object has 'call' attribute that's callable, use it.
                     call_attr = getattr(callee, "call", None)
                     if callable(call_attr):
-                        # interpreter.Function.call expects (interpreter, args_list)
-                        # We pass our fallback interpreter instance.
                         try:
                             result = call_attr(self.interpreter, args)
                         except TypeError:
@@ -318,7 +322,7 @@ class VM:
                 return val
 
             if op == OP_LOOP:
-                # not used much here
+                # reserved / noop for now
                 continue
 
             if op == OP_NOP:

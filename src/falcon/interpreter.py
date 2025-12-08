@@ -216,10 +216,21 @@ class Interpreter:
             return expr.value
 
         if isinstance(expr, Variable):
+            # Defensive: 'break' should never be treated as a variable.
+            # If it appears here, either the lexer produced IDENT for 'break'
+            # or an older module/path is being executed. Give a clear error.
+            if expr.name == "break":
+                raise InterpreterError(
+                    "Runtime error: 'break' used as an identifier/variable. "
+                    "The 'break' keyword must be a statement inside a loop (e.g. `break;`). "
+                    "If you see this unexpectedly, ensure your lexer/parser emit a BreakStmt "
+                    "and that you're running the up-to-date interpreter module."
+                )
             try:
                 return env.get(expr.name)
             except NameError as e:
                 raise InterpreterError(str(e)) from e
+
 
         if isinstance(expr, Grouping):
             return self._eval(expr.expression, env)
