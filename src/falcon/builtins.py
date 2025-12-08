@@ -1,30 +1,33 @@
+# src/falcon/builtins.py
 """
 Built-in functions for the Falcon runtime (extended).
 
-Adds:
+Provides:
+- show(...) as the preferred output function (used by VM)
 - readFile(path) and writeFile(path, content) with safety checks
-- Promise stub for future async support (sync placeholder)
-- console object with log method
-- toString(value) builtin for explicit conversion
-- show(...) as the preferred output function
+- Promise stub for future async support (synchronous placeholder)
+- console object with log/error methods
+- toString(value) and internal _to_string_impl for coercion
+- other small runtime helpers (len, range, typeOf, assert, exit)
 """
 
 from __future__ import annotations
-
 from typing import Any, List, Callable, Dict
 import sys
 import pathlib
 import json
 
-# --- helpers ---
+# --------------------
+# String conversion helpers
+# --------------------
 def _to_string_impl(x: Any) -> str:
     """
-    Canonical string conversion used by toString() and interpreter coercion.
+    Canonical string conversion used by toString() and VM coercion.
     - None -> "null"
     - bool -> "true"/"false"
     - str -> unchanged
     - numbers -> str()
-    - lists/dicts -> JSON-ish via json.dumps if possible
+    - lists/dicts -> JSON via json.dumps if possible
     - fallback -> repr()
     """
     if x is None:
@@ -36,6 +39,7 @@ def _to_string_impl(x: Any) -> str:
     if isinstance(x, (int, float)):
         return str(x)
     try:
+        # Prefer readable JSON for lists/dicts where possible
         return json.dumps(x)
     except Exception:
         try:
@@ -44,47 +48,44 @@ def _to_string_impl(x: Any) -> str:
             return "<unrepresentable>"
 
 def _to_display(x: Any) -> str:
-    """
-    Short helper for printing with spaces (used by builtin_show).
-    """
+    """Short helper for user-facing printing."""
     return _to_string_impl(x)
 
-
-# --- show / console ---
-def builtin_show(*args: Any) -> None:
+# --------------------
+# Output helpers
+# --------------------
+def show(*args: Any) -> None:
     """Preferred Falcon output function: show(...)."""
     out = " ".join(_to_display(a) for a in args)
-    # use host stdout
     print(out)
 
 class _Console:
     @staticmethod
     def log(*args: Any) -> None:
-        builtin_show(*args)
+        show(*args)
 
     @staticmethod
     def error(*args: Any) -> None:
-        print("ERROR:", *[_to_display(a) for a in args], file=sys.stderr)
+        print("ERROR:", " ".join(_to_display(a) for a in args), file=sys.stderr)
 
-
-# --- file I/O with safety checks ---
+# --------------------
+# File I/O with safety checks
+# --------------------
 # Restrict file operations to the current working directory and its subdirectories
 _BASE_SAFE_DIR = pathlib.Path.cwd().resolve()
 
 def _resolve_safe_path(path: str) -> pathlib.Path:
     p = pathlib.Path(path)
     # Normalize and resolve relative paths under base dir
-    if p.is_absolute():
-        p = p.resolve()
-    else:
-        p = (_BASE_SAFE_DIR / p).resolve()
+    p = p.resolve() if p.is_absolute() else (_BASE_SAFE_DIR / p).resolve()
     try:
         p.relative_to(_BASE_SAFE_DIR)
     except Exception:
         raise PermissionError("File operation outside safe directory is not allowed")
     return p
 
-def builtin_readFile(path: str) -> str:
+def readFile(path: str) -> str:
+    """Read file text under the safe base directory."""
     p = _resolve_safe_path(path)
     if not p.exists():
         raise FileNotFoundError(str(p))
@@ -92,27 +93,28 @@ def builtin_readFile(path: str) -> str:
         raise IsADirectoryError(str(p))
     return p.read_text(encoding="utf-8")
 
-def builtin_writeFile(path: str, content: str) -> None:
+def writeFile(path: str, content: Any) -> None:
+    """Write file text under the safe base directory. Content coerced to str."""
     p = _resolve_safe_path(path)
-    # create parent dirs if needed
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(str(content), encoding="utf-8")
 
-
-# --- toString builtin (explicit conversion) ---
+# --------------------
+# toString builtin
+# --------------------
 def toString(value: Any) -> str:
     """Built-in toString(value) available to Falcon scripts."""
     return _to_string_impl(value)
 
-
-# --- async-friendly Promise stub (synchronous placeholder) ---
+# --------------------
+# Promise stub (synchronous placeholder)
+# --------------------
 class Promise:
     """
-    Very small placeholder Promise-like object.
-    - then(fn) executes fn immediately with the resolved value
-    - catch(fn) is a noop unless error stored
-    This is synchronous and only exists so user code can call promise.then(...).
-    Real async features can be integrated later.
+    Minimal Promise-like placeholder:
+    - then(fn) executes fn immediately if resolved, or defers if not
+    - catch(fn) executes on rejection
+    This is synchronous and exists to allow promise.then(...) in user code.
     """
     def __init__(self, executor: Callable[[Callable[[Any], None], Callable[[Any], None]], None] | None = None):
         self._resolved = False
@@ -178,9 +180,10 @@ class Promise:
         p._error = error
         return p
 
-
-# --- other small builtins ---
-def builtin_len(obj: Any) -> int:
+# --------------------
+# Other small builtins
+# --------------------
+def len_builtin(obj: Any) -> int:
     if obj is None:
         raise TypeError("len(null) is not supported")
     if isinstance(obj, (str, list, tuple, dict, set)):
@@ -189,7 +192,7 @@ def builtin_len(obj: Any) -> int:
         return obj.__len__()  # type: ignore
     raise TypeError(f"Object of type {type(obj).__name__} has no length")
 
-def builtin_range(start: int, stop: int | None = None, step: int = 1) -> List[int]:
+def range_builtin(start: int, stop: int | None = None, step: int = 1) -> List[int]:
     if stop is None:
         stop = int(start)
         start = 0
@@ -198,7 +201,7 @@ def builtin_range(start: int, stop: int | None = None, step: int = 1) -> List[in
         raise ValueError("range() step argument must not be zero")
     return list(range(start, stop, step))
 
-def builtin_typeof(value: Any) -> str:
+def typeOf(value: Any) -> str:
     if value is None:
         return "null"
     if isinstance(value, bool):
@@ -215,31 +218,30 @@ def builtin_typeof(value: Any) -> str:
         return "function"
     return "object"
 
-def builtin_assert(cond: Any, message: str | None = None) -> None:
+def assert_builtin(cond: Any, message: str | None = None) -> None:
     truthy = cond is not None and (cond is True or (isinstance(cond, (int, float)) and cond != 0) or bool(cond))
     if not truthy:
         raise AssertionError(message or "Assertion failed")
 
-def builtin_exit(code: int = 0) -> None:
+def exit_builtin(code: int = 0) -> None:
     raise SystemExit(int(code))
 
-
-# --- export builtins mapping ---
+# --------------------
+# Export builtins mapping (used by VM)
+# --------------------
 BUILTINS: Dict[str, Callable[..., Any]] = {
-    # preferred Falcon output
-    "show": builtin_show,
-    "len": builtin_len,
-    "range": builtin_range,
-    "typeOf": builtin_typeof,
-    "assert": builtin_assert,
-    "exit": builtin_exit,
-    # file ops
-    "readFile": builtin_readFile,
-    "writeFile": builtin_writeFile,
-    # toString explicit conversion
+    "show": show,
+    "len": len_builtin,
+    "range": range_builtin,
+    "typeOf": typeOf,
+    "assert": assert_builtin,
+    "exit": exit_builtin,
+    "readFile": readFile,
+    "writeFile": writeFile,
     "toString": toString,
-    # Promise / async helpers
     "Promise": Promise,
-    # console
     "console": _Console(),
 }
+
+# Backwards-compatible aliases (if VM or other code expects these names)
+_to_string_impl = _to_string_impl

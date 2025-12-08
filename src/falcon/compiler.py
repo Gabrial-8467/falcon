@@ -48,6 +48,13 @@ OP_LOOP = "LOOP"
 OP_NOP = "NOP"
 
 # -------------------------
+# NEW fused opcodes (string names to match existing style)
+# -------------------------
+OP_INC_LOCAL = "INC_LOCAL"                       # arg: local_index
+OP_JUMP_IF_GE_LOCAL_IMM = "JUMP_IF_GE_LOCAL_IMM" # arg: (local_index, immediate_value, target_ip)
+OP_FAST_COUNT = "FAST_COUNT"                     # arg: (local_index, limit)
+
+# -------------------------
 # Data container classes
 # -------------------------
 @dataclass
@@ -342,11 +349,87 @@ class Compiler:
 
         # --- Loop (infinite) ---
         if isinstance(stmt, LoopStmt):
+            # Attempt to detect a common numeric counting loop pattern and emit fused ops:
+            # pattern:
+            #   loop {
+            #       if (<var> >= <CONST>) { break; }
+            #       <var> := <var> + 1;
+            #       ... (no other side-effects) ...
+            #   }
+            #
+            # If pattern matches exactly (IfStmt then Assign increment as next stmt)
+            # we emit:
+            #   OP_JUMP_IF_GE_LOCAL_IMM (var, const, exit)
+            #   OP_INC_LOCAL var
+            #   OP_JUMP start
+            #
             start_ip = len(self.instructions)
+
+            # if body is a BlockStmt with at least two statements, try pattern detection
+            if isinstance(stmt.body, BlockStmt) and len(stmt.body.body) >= 2:
+                first = stmt.body.body[0]
+                second = stmt.body.body[1]
+
+                pattern_ok = False
+                var_name = None
+                imm_value = None
+
+                # check first is IfStmt with then_branch a BreakStmt and condition is Binary comparing Variable to Literal
+                if isinstance(first, IfStmt) and isinstance(first.then_branch, BreakStmt):
+                    cond = first.condition
+                    if isinstance(cond, Binary) and isinstance(cond.left, Variable) and isinstance(cond.right, Literal):
+                        # support >, >=, == style where we will use >= semantics for break condition if op is '>' or '>='
+                        if cond.op in (">", ">="):
+                            var_name = cond.left.name
+                            imm_value = cond.right.value
+                            pattern_ok = True
+
+                # check second is Assign increment of same variable by literal 1
+                if pattern_ok and isinstance(second, ExprStmt) and isinstance(second.expr, Assign):
+                    assign = second.expr
+                    # target must be same variable
+                    if isinstance(assign.target, Variable) and assign.target.name == var_name:
+                        val = assign.value
+                        # accept patterns: var + 1  OR 1 + var
+                        if isinstance(val, Binary) and val.op == "+":
+                            is_inc = False
+                            if isinstance(val.left, Variable) and val.left.name == var_name and isinstance(val.right, Literal) and val.right.value == 1:
+                                is_inc = True
+                            if isinstance(val.right, Variable) and val.right.name == var_name and isinstance(val.left, Literal) and val.left.value == 1:
+                                is_inc = True
+                            if is_inc:
+                                # Only fuse if var is a local (we can check/allocate the local)
+                                if var_name in self.locals or self._in_function():
+                                    # ensure it's allocated as local
+                                    if var_name not in self.locals:
+                                        self._alloc_local(var_name)
+                                    local_idx = self.locals[var_name]
+                                    # emit fused sequence:
+                                    # placeholder for jump-if-ge (patch exit ip later)
+                                    # note: arg for OP_JUMP_IF_GE_LOCAL_IMM will be (local_idx, imm_value, exit_placeholder)
+                                    jpos = len(self.instructions)
+                                    self._emit(OP_JUMP_IF_GE_LOCAL_IMM, (local_idx, imm_value, -1))
+                                    # inc
+                                    self._emit(OP_INC_LOCAL, local_idx)
+                                    # jump back to start
+                                    self._emit(OP_JUMP, start_ip)
+                                    # exit target is here
+                                    exit_ip = len(self.instructions)
+                                    # patch the earlier tuple entry by replacing it with proper target
+                                    # (we can't mutate the tuple directly; replace whole arg)
+                                    op, arg = self.instructions[jpos]
+                                    self.instructions[jpos] = (op, (arg[0], arg[1], exit_ip))
+                                    # compile any remaining statements after second inside body
+                                    for extra in stmt.body.body[2:]:
+                                        self._compile_stmt(extra)
+                                    return
+
+            # default / fallback implementation (no fusion)
             # push loop context
             ctx = {"start_ip": start_ip, "break_positions": []}
             self.loop_stack.append(ctx)
 
+            # compile body & jump back
             self._compile_stmt(stmt.body)
             self._emit(OP_JUMP, start_ip)
 
@@ -443,6 +526,29 @@ class Compiler:
             raise CompileError(f"Unsupported binary operator '{expr.op}'")
 
         if isinstance(expr, Assign):
+            # Optimize local increment pattern: x := x + 1  OR x := 1 + x  => OP_INC_LOCAL
+            if isinstance(expr.target, Variable) and isinstance(expr.value, Binary) and expr.value.op == "+":
+                target_name = expr.target.name
+                left = expr.value.left
+                right = expr.value.right
+                is_inc = False
+                # x + 1
+                if isinstance(left, Variable) and isinstance(right, Literal) and right.value == 1 and left.name == target_name:
+                    is_inc = True
+                # 1 + x
+                if isinstance(right, Variable) and isinstance(left, Literal) and left.value == 1 and right.name == target_name:
+                    is_inc = True
+                if is_inc and self._in_function():
+                    # allocate local if missing
+                    if target_name not in self.locals:
+                        self._alloc_local(target_name)
+                    idx = self.locals[target_name]
+                    self._emit(OP_INC_LOCAL, idx)
+                    # after assignment expression, push the new local value onto stack (preserve previous behavior of returning the assigned value)
+                    self._emit(OP_LOAD_LOCAL, idx)
+                    return
+
+            # fallback general assignment
             if isinstance(expr.target, Variable):
                 self._compile_expr(expr.value)
                 name = expr.target.name
