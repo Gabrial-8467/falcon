@@ -263,7 +263,6 @@ Contributions are welcome! You can help with:
 * Adding built-in functions
 * Designing language features
 * Writing docs & examples
-* Working on the VM or transpiler
 
 Open an issue or PR anytime.
 
