@@ -31,6 +31,7 @@ KEYWORDS = {
     "null": TokenType.NULL,
     "function": TokenType.FUNCTION,
     "return": TokenType.RETURN,
+    "break": TokenType.BREAK,
 }
 
 
