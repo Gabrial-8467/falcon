@@ -10,6 +10,7 @@ Updated to support:
 - var / const declaration support via LetStmt.is_const
 - ForStmt and LoopStmt runtime handling
 - `show` as the primary output builtin (no legacy `print` handling)
+- `break` statement support (BreakStmt) with proper loop-scoped behavior
 """
 from __future__ import annotations
 
@@ -17,7 +18,7 @@ from typing import Any, List, Optional, Callable
 from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     Stmt, ExprStmt, LetStmt, BlockStmt, IfStmt, WhileStmt,
-    FunctionStmt, ReturnStmt, ForStmt, LoopStmt,
+    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt,
 )
 from .env import Environment
 from .builtins import BUILTINS, Promise
@@ -30,6 +31,11 @@ class _ReturnSignal(Exception):
     def __init__(self, value: Any):
         super().__init__("return signal")
         self.value = value
+
+
+class _BreakSignal(Exception):
+    """Internal signal used to unwind out of loops for 'break'."""
+    pass
 
 
 class Function:
@@ -68,6 +74,9 @@ class Interpreter:
         for name, fn in BUILTINS.items():
             # it's okay if builtins already include 'show'
             self.globals.define(name, fn, is_const=True)
+
+        # track loop nesting depth to validate 'break' usage
+        self._loop_depth = 0
 
 
     def interpret(self, stmts: List[Stmt]) -> None:
@@ -110,6 +119,13 @@ class Interpreter:
                 self._execute(stmt.body, env)
             return
 
+        # ---------------- BreakStmt ----------------
+        if isinstance(stmt, BreakStmt):
+            if self._loop_depth <= 0:
+                raise InterpreterError("Runtime error: 'break' used outside of a loop")
+            # signal to unwind the nearest loop
+            raise _BreakSignal()
+
         # ---------------- ForStmt (Falcon-style 'for') ----------------
         if isinstance(stmt, ForStmt):
             # Evaluate start/end/step in the current env
@@ -141,32 +157,46 @@ class Interpreter:
                     raise InterpreterError("for-loop comparison failed (non-comparable values)")
 
             # run loop; support 'return' inside body via _ReturnSignal propagation
-            while _cond(loop_env.get(stmt.name), end_val, s):
-                try:
-                    for st in stmt.body.body:
-                        self._execute(st, loop_env)
-                except _ReturnSignal:
-                    # propagate return upwards
-                    raise
-                # increment iterator using Python numeric semantics
-                cur = loop_env.get(stmt.name)
-                try:
-                    loop_env.assign(stmt.name, cur + step_val)
-                except Exception as e:
-                    raise InterpreterError(f"Failed to increment loop variable: {e}") from e
+            self._loop_depth += 1
+            try:
+                while _cond(loop_env.get(stmt.name), end_val, s):
+                    try:
+                        for st in stmt.body.body:
+                            self._execute(st, loop_env)
+                    except _ReturnSignal:
+                        # propagate return upwards
+                        raise
+                    except _BreakSignal:
+                        # break out of this for-loop
+                        break
+                    # increment iterator using Python numeric semantics
+                    cur = loop_env.get(stmt.name)
+                    try:
+                        loop_env.assign(stmt.name, cur + step_val)
+                    except Exception as e:
+                        raise InterpreterError(f"Failed to increment loop variable: {e}") from e
+            finally:
+                self._loop_depth -= 1
             return
 
         # ---------------- LoopStmt (infinite) ----------------
         if isinstance(stmt, LoopStmt):
             loop_env = Environment(env)
+            self._loop_depth += 1
             try:
                 while True:
-                    for st in stmt.body.body:
-                        self._execute(st, loop_env)
-            except _ReturnSignal:
-                # propagate return outwards
-                raise
-            # loop never naturally returns
+                    try:
+                        for st in stmt.body.body:
+                            self._execute(st, loop_env)
+                    except _ReturnSignal:
+                        # propagate return outwards
+                        raise
+                    except _BreakSignal:
+                        # exit the infinite loop
+                        break
+            finally:
+                self._loop_depth -= 1
+            # loop naturally falls through after break; otherwise it never returns
             return
 
         if isinstance(stmt, FunctionStmt):
