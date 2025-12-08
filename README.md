@@ -240,4 +240,3 @@ If you'd like, I can also generate:
 ✅ Installer generator (PyInstaller / NSIS)  
 ✅ Nice CLI scaffolding (`falcon new project`)  
 
-Just tell me — I’m ready.
