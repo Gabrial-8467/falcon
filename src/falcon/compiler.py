@@ -1,12 +1,13 @@
 """
-Optimized Falcon compiler with fast opcodes:
+Optimized Falcon compiler (integer opcodes version)
+Includes:
 - INC_LOCAL
 - JUMP_IF_GE_LOCAL_IMM
-- FAST_COUNT (pure numeric loop fast path)
+- FAST_COUNT(local, limit, target)
 """
 
 from __future__ import annotations
-from typing import Any, List, Tuple, Dict, Optional
+from typing import Any, List, Tuple, Dict
 from dataclasses import dataclass
 
 from .ast_nodes import (
@@ -15,51 +16,63 @@ from .ast_nodes import (
     FunctionStmt, ReturnStmt, ForStmt, LoopStmt, ExprStmt, BreakStmt
 )
 
-# ---------------------------------
-#  Base opcodes (unchanged)
-# ---------------------------------
-OP_LOAD_CONST   = "LOAD_CONST"
-OP_LOAD_GLOBAL  = "LOAD_GLOBAL"
-OP_STORE_GLOBAL = "STORE_GLOBAL"
-OP_LOAD_LOCAL   = "LOAD_LOCAL"
-OP_STORE_LOCAL  = "STORE_LOCAL"
-OP_POP          = "POP"
+# -------------------------
+# Opcode integer mapping
+# -------------------------
+OP_LOAD_CONST   = 1
+OP_LOAD_GLOBAL  = 2
+OP_STORE_GLOBAL = 3
+OP_LOAD_LOCAL   = 4
+OP_STORE_LOCAL  = 5
+OP_POP          = 6
 
-OP_ADD = "ADD"; OP_SUB = "SUB"; OP_MUL = "MUL"; OP_DIV = "DIV"; OP_MOD = "MOD"
-OP_EQ  = "EQ"; OP_NEQ = "NEQ"; OP_LT = "LT"; OP_LTE = "LTE"; OP_GT = "GT"; OP_GTE = "GTE"
-OP_AND = "AND"; OP_OR = "OR"; OP_NOT = "NOT"
+OP_ADD = 7
+OP_SUB = 8
+OP_MUL = 9
+OP_DIV = 10
+OP_MOD = 11
 
-OP_JUMP = "JUMP"
-OP_JUMP_IF_FALSE = "JUMP_IF_FALSE"
-OP_CALL = "CALL"
-OP_RETURN = "RETURN"
+OP_EQ  = 12
+OP_NEQ = 13
+OP_LT = 14
+OP_LTE = 15
+OP_GT = 16
+OP_GTE = 17
 
-OP_PRINT = "PRINT"
-OP_MAKE_FUNCTION = "MAKE_FUNCTION"
-OP_LOAD_ATTR = "LOAD_ATTR"
-OP_STORE_ATTR = "STORE_ATTR"
+OP_AND = 18
+OP_OR = 19
+OP_NOT = 20
 
-OP_LOOP = "LOOP"
-OP_NOP = "NOP"
+OP_JUMP = 21
+OP_JUMP_IF_FALSE = 22
+OP_CALL = 23
+OP_RETURN = 24
 
-# ---------------------------------
-#  NEW optimized opcodes
-# ---------------------------------
-OP_INC_LOCAL = "INC_LOCAL"                       # i := i + 1
-OP_JUMP_IF_GE_LOCAL_IMM = "JUMP_IF_GE_LOCAL_IMM" # (local, limit, target)
-OP_FAST_COUNT = "FAST_COUNT"                     # fast numeric loop
+OP_PRINT = 25
+OP_MAKE_FUNCTION = 26
+OP_LOAD_ATTR = 27
+OP_STORE_ATTR = 28
+
+OP_LOOP = 29
+OP_NOP = 30
+
+# Optimized opcodes
+OP_INC_LOCAL = 31
+OP_JUMP_IF_GE_LOCAL_IMM = 32
+OP_FAST_COUNT = 33
 
 
-# ---------------------------------
-# Data model
-# ---------------------------------
+# -------------------------
+# Code object
+# -------------------------
 @dataclass
 class Code:
     name: str
-    instructions: List[Tuple[str, Any]]
+    instructions: List[Tuple[int, Any]]
     consts: List[Any]
     nlocals: int
     argcount: int
+
 
 class FunctionObject:
     def __init__(self, name, code=None, ast_node=None, argcount=0, nlocals=0):
@@ -69,75 +82,47 @@ class FunctionObject:
         self.argcount = argcount
         self.nlocals = nlocals
 
-    def is_ast_backed(self) -> bool:
+    def is_ast_backed(self):
         return self.ast_node is not None
 
 
-# ---------------------------------
-# Compiler implementation
-# ---------------------------------
 class CompileError(Exception):
     pass
 
+
+# ==========================
+# Compiler
+# ==========================
 class Compiler:
-    def __init__(self, verbose: bool = False):
+
+    def __init__(self, verbose=False):
+        self.verbose = verbose
         self.instructions = []
         self.consts = []
-
         self.locals: Dict[str, int] = {}
         self.next_local = 0
-        self.globals = set()
         self.argcount = 0
         self.name = "<module>"
-        self.verbose = verbose
+        self.loop_stack = []
 
-        # loop stack
-        self.loop_stack = []   # each = {"start_ip":int,"break_positions":[ints]}
-
-    # ---------------------------------
-    # Public API
-    # ---------------------------------
-    def compile_module(self, stmts: List[Stmt], name="<module>") -> Code:
-        self.instructions = []
-        self.consts = []
-        self.locals = {}
-        self.next_local = 0
-        self.argcount = 0
+    # -------------
+    # Public entry
+    # -------------
+    def compile_module(self, stmts: List[Stmt], name="<module>"):
+        self.__init__(self.verbose)
         self.name = name
 
         for s in stmts:
             self._compile_stmt(s)
 
-        # implicit return None
         self._emit(OP_LOAD_CONST, self._add_const(None))
         self._emit(OP_RETURN, None)
 
         return Code(name, self.instructions[:], self.consts[:], self.next_local, 0)
 
-    def compile_function(self, fn: FunctionStmt) -> Code:
-        sub = Compiler(verbose=self.verbose)
-        sub.name = fn.name
-
-        # assign params as locals 0..n
-        sub.locals = {}
-        sub.next_local = 0
-        for p in fn.params:
-            sub.locals[p] = sub.next_local
-            sub.next_local += 1
-        sub.argcount = len(fn.params)
-
-        for stmt in fn.body.body:
-            sub._compile_stmt(stmt)
-
-        # implicit return None
-        sub._emit(OP_LOAD_CONST, sub._add_const(None))
-        sub._emit(OP_RETURN, None)
-
-        return Code(fn.name, sub.instructions[:], sub.consts[:], sub.next_local, sub.argcount)
-
-    # ---------------------------------
+    # -------------
     # Helpers
-    # ---------------------------------
+    # -------------
     def _add_const(self, v):
         self.consts.append(v)
         return len(self.consts) - 1
@@ -145,12 +130,12 @@ class Compiler:
     def _emit(self, op, arg):
         self.instructions.append((op, arg))
 
-    def _emit_jump(self, op, target=None):
+    def _emit_jump(self, op):
         idx = len(self.instructions)
-        self._emit(op, -1 if target is None else target)
+        self._emit(op, -1)
         return idx
 
-    def _patch_jump(self, idx, target):
+    def _patch(self, idx, target):
         op, _ = self.instructions[idx]
         self.instructions[idx] = (op, target)
 
@@ -162,191 +147,174 @@ class Compiler:
         self.next_local += 1
         return idx
 
-    # ------------------------------------------
-    #  Optimized loop fusion detection
-    # ------------------------------------------
-    def _can_fastcount_loop(self, stmt: LoopStmt):
+    # =====================
+    # FAST LOOP DETECTION
+    # =====================
+    def _can_fastcount(self, stmt: LoopStmt):
         """
-        Detect simple patterns:
-
-            loop {
-                if (i == LIMIT) break;
-                i = i + 1;
-            }
-
-        returns (local_idx, limit) or None
+        Detect:
+            if (i == LIMIT) break;
+            i = i + 1;
         """
-
         if not isinstance(stmt.body, BlockStmt):
             return None
         body = stmt.body.body
         if len(body) != 2:
             return None
 
-        # pattern 1: if (i == limit) break;
         cond_stmt, inc_stmt = body
 
-        # check break-if
+        # Check break-if
         if not isinstance(cond_stmt, IfStmt):
             return None
         if not isinstance(cond_stmt.then_branch, BreakStmt):
             return None
-        if cond_stmt.else_branch is not None:
-            return None
-        # check condition structure: i == LIMIT
         cond = cond_stmt.condition
-        if not isinstance(cond, Binary):
+
+        if not (isinstance(cond, Binary) and cond.op == "=="):
             return None
-        if cond.op != "==":
-            return None
-        if not isinstance(cond.left, Variable):
-            return None
-        if not isinstance(cond.right, Literal):
+        if not (isinstance(cond.left, Variable) and isinstance(cond.right, Literal)):
             return None
 
-        var_name = cond.left.name
-        limit_val = cond.right.value
-        if not isinstance(limit_val, int):
+        var = cond.left.name
+        limit = cond.right.value
+        if not isinstance(limit, int):
+            return None
+        if var not in self.locals:
             return None
 
-        # pattern 2: i = i + 1;
-        if not isinstance(inc_stmt, ExprStmt):
-            return None
-        if not isinstance(inc_stmt.expr, Assign):
-            return None
+        # Check increment
+        if not isinstance(inc_stmt, ExprStmt): return None
+        if not isinstance(inc_stmt.expr, Assign): return None
+
         a = inc_stmt.expr
-        if not isinstance(a.target, Variable):
-            return None
-        if a.target.name != var_name:
-            return None
-        # Check a.value is (i + 1)
-        if not isinstance(a.value, Binary):
-            return None
-        if a.value.op != "+":
-            return None
-        if not isinstance(a.value.left, Variable):
-            return None
-        if a.value.left.name != var_name:
-            return None
-        if not isinstance(a.value.right, Literal):
-            return None
-        if a.value.right.value != 1:
+        if not (isinstance(a.target, Variable) and a.target.name == var):
             return None
 
-        # Success
-        if var_name not in self.locals:
+        if not (isinstance(a.value, Binary) and a.value.op == "+"):
+            return None
+        if not (isinstance(a.value.left, Variable) and a.value.left.name == var):
+            return None
+        if not (isinstance(a.value.right, Literal) and a.value.right.value == 1):
             return None
 
-        return self.locals[var_name], limit_val
+        return self.locals[var], limit
 
-    # ---------------------------------
-    # Statement Compilation
-    # ---------------------------------
-    def _compile_stmt(self, stmt: Stmt):
+    # =====================
+    # STATEMENTS
+    # =====================
+    def _compile_stmt(self, stmt):
 
-        # ---------- Block ----------
+        # ---------------- Block
         if isinstance(stmt, BlockStmt):
             for s in stmt.body:
                 self._compile_stmt(s)
             return
 
-        # ---------- Variable Declaration ----------
+        # ---------------- let
         if isinstance(stmt, LetStmt):
-            if stmt.initializer is None:
-                self._emit(OP_LOAD_CONST, self._add_const(None))
-            else:
+            if stmt.initializer:
                 self._compile_expr(stmt.initializer)
-
-            if self.name != "<module>":
-                idx = self._alloc_local(stmt.name)
-                self._emit(OP_STORE_LOCAL, idx)
             else:
-                self._emit(OP_STORE_GLOBAL, stmt.name)
+                self._emit(OP_LOAD_CONST, self._add_const(None))
+            idx = self._alloc_local(stmt.name)
+            self._emit(OP_STORE_LOCAL, idx)
             return
 
-        # ---------- Print ----------
+        # ---------------- print
         if isinstance(stmt, PrintStmt):
             self._compile_expr(stmt.expr)
             self._emit(OP_PRINT, None)
             return
 
-        # ---------- Expression Statement ----------
+        # ---------------- expr stmt
         if isinstance(stmt, ExprStmt):
             self._compile_expr(stmt.expr)
             self._emit(OP_POP, None)
             return
 
-        # ---------- If ----------
+        # ---------------- if
         if isinstance(stmt, IfStmt):
             self._compile_expr(stmt.condition)
-            jfalse = self._emit_jump(OP_JUMP_IF_FALSE)
+            jf = self._emit_jump(OP_JUMP_IF_FALSE)
             self._compile_stmt(stmt.then_branch)
-            jdone = self._emit_jump(OP_JUMP)
-            self._patch_jump(jfalse, len(self.instructions))
+            jend = self._emit_jump(OP_JUMP)
+            self._patch(jf, len(self.instructions))
             if stmt.else_branch:
                 self._compile_stmt(stmt.else_branch)
-            self._patch_jump(jdone, len(self.instructions))
+            self._patch(jend, len(self.instructions))
             return
 
-        # ---------- While ----------
+        # ---------------- while
         if isinstance(stmt, WhileStmt):
-            start_ip = len(self.instructions)
-
-            # condition
+            start = len(self.instructions)
             self._compile_expr(stmt.condition)
-            jexit = self._emit_jump(OP_JUMP_IF_FALSE)
+            jf = self._emit_jump(OP_JUMP_IF_FALSE)
 
-            ctx = {"start_ip": start_ip, "break_positions": []}
+            ctx = {"breaks": [], "start": start}
             self.loop_stack.append(ctx)
 
-            # body
             self._compile_stmt(stmt.body)
+            self._emit(OP_JUMP, start)
 
-            self._emit(OP_JUMP, start_ip)
-
-            end_ip = len(self.instructions)
-            self._patch_jump(jexit, end_ip)
-
-            for bp in ctx["break_positions"]:
-                self._patch_jump(bp, end_ip)
-
+            end = len(self.instructions)
+            self._patch(jf, end)
+            for bp in ctx["breaks"]:
+                self._patch(bp, end)
             self.loop_stack.pop()
             return
 
-        # ---------- Optimized Loop ----------
+        # ---------------- loop (FAST version)
         if isinstance(stmt, LoopStmt):
 
-            # Try FAST_COUNT
-            fast = self._can_fastcount_loop(stmt)
+            fast = self._can_fastcount(stmt)
             if fast:
-                local_idx, limit_val = fast
-                self._emit(OP_FAST_COUNT, (local_idx, limit_val))
+                local_idx, limit = fast
+                end_target = len(self.instructions) + 1  # NEXT instruction
+                self._emit(OP_FAST_COUNT, (local_idx, limit, end_target))
                 return
 
-            # Otherwise fallback to normal loop
-            start_ip = len(self.instructions)
-            ctx = {"start_ip": start_ip, "break_positions": []}
+            # fallback: regular loop
+            start = len(self.instructions)
+            ctx = {"breaks": [], "start": start}
             self.loop_stack.append(ctx)
 
             self._compile_stmt(stmt.body)
-            self._emit(OP_JUMP, start_ip)
+            self._emit(OP_JUMP, start)
 
-            end_ip = len(self.instructions)
-            for bp in ctx["break_positions"]:
-                self._patch_jump(bp, end_ip)
+            end = len(self.instructions)
+            for bp in ctx["breaks"]:
+                self._patch(bp, end)
 
             self.loop_stack.pop()
             return
 
-        # ---------- Function ----------
+        # ---------------- function
         if isinstance(stmt, FunctionStmt):
-            c = self.compile_function(stmt)
-            idx = self._add_const(c)
-            self._emit(OP_MAKE_FUNCTION, ("CODE", idx, stmt.name, c.argcount, c.nlocals))
+            sub = Compiler(self.verbose)
+            sub.name = stmt.name
+            # params
+            sub.locals = {}
+            sub.next_local = 0
+            for p in stmt.params:
+                sub.locals[p] = sub.next_local
+                sub.next_local += 1
+            sub.argcount = len(stmt.params)
+            # body
+            for s in stmt.body.body:
+                sub._compile_stmt(s)
+            sub._emit(OP_LOAD_CONST, sub._add_const(None))
+            sub._emit(OP_RETURN, None)
+
+            code = Code(stmt.name, sub.instructions[:], sub.consts[:],
+                        sub.next_local, sub.argcount)
+            idx = self._add_const(code)
+            self._emit(OP_MAKE_FUNCTION, ("CODE", idx, stmt.name,
+                                          code.argcount, code.nlocals))
             self._emit(OP_STORE_GLOBAL, stmt.name)
             return
 
-        # ---------- Return ----------
+        # ---------------- return
         if isinstance(stmt, ReturnStmt):
             if stmt.value:
                 self._compile_expr(stmt.value)
@@ -355,27 +323,27 @@ class Compiler:
             self._emit(OP_RETURN, None)
             return
 
-        # ---------- Break ----------
+        # ---------------- break
         if isinstance(stmt, BreakStmt):
             if not self.loop_stack:
-                raise CompileError("'break' outside loop")
-            pos = self._emit_jump(OP_JUMP)
-            self.loop_stack[-1]["break_positions"].append(pos)
+                raise CompileError("break outside loop")
+            j = self._emit_jump(OP_JUMP)
+            self.loop_stack[-1]["breaks"].append(j)
             return
 
-        raise CompileError(f"Unhandled statement type: {type(stmt).__name__}")
+        raise CompileError("Unknown stmt")
 
-    # ---------------------------------
-    # Expression Compilation
-    # ---------------------------------
-    def _compile_expr(self, expr: Expr):
+    # =====================
+    # EXPRESSIONS
+    # =====================
+    def _compile_expr(self, expr):
 
-        # ---------- Literal ----------
+        # ----- literal
         if isinstance(expr, Literal):
             self._emit(OP_LOAD_CONST, self._add_const(expr.value))
             return
 
-        # ---------- Variable ----------
+        # ----- var
         if isinstance(expr, Variable):
             if expr.name in self.locals:
                 self._emit(OP_LOAD_LOCAL, self.locals[expr.name])
@@ -383,12 +351,12 @@ class Compiler:
                 self._emit(OP_LOAD_GLOBAL, expr.name)
             return
 
-        # ---------- Grouping ----------
+        # ----- grouping
         if isinstance(expr, Grouping):
             self._compile_expr(expr.expression)
             return
 
-        # ---------- Unary ----------
+        # ----- unary
         if isinstance(expr, Unary):
             self._compile_expr(expr.operand)
             if expr.op == "!":
@@ -398,92 +366,77 @@ class Compiler:
                 self._emit(OP_MUL, None)
             return
 
-        # ---------- Binary ----------
+        # ----- binary
         if isinstance(expr, Binary):
-            # Short-circuit AND / OR
-            if expr.op == "&&":
-                self._compile_expr(expr.left)
-                jfalse = self._emit_jump(OP_JUMP_IF_FALSE)
-                self._compile_expr(expr.right)
-                self._patch_jump(jfalse, len(self.instructions))
+
+            # detect i + 1 → INC_LOCAL
+            if (expr.op == "+"
+                and isinstance(expr.left, Variable)
+                and isinstance(expr.right, Literal)
+                and expr.right.value == 1
+                and expr.left.name in self.locals):
+
+                idx = self.locals[expr.left.name]
+                self._emit(OP_INC_LOCAL, idx)
+                # push new value
+                self._emit(OP_LOAD_LOCAL, idx)
                 return
 
-            if expr.op == "||":
-                self._compile_expr(expr.left)
-                jskip = self._emit_jump(OP_JUMP_IF_FALSE)
-                self._compile_expr(expr.right)
-                # Weak OR semantics; allowed
-                return
-
-            # Special-case fast increment pattern: i = i + 1
-            if expr.op == "+":
-                if isinstance(expr.left, Variable) and isinstance(expr.right, Literal):
-                    if expr.right.value == 1 and expr.left.name in self.locals:
-                        # emit INC_LOCAL
-                        self._emit(OP_INC_LOCAL, self.locals[expr.left.name])
-                        # INC_LOCAL returns new value, so no need to push manually
-                        return
-
-            # general binary case  
+            # normal binary
             self._compile_expr(expr.left)
             self._compile_expr(expr.right)
 
             opmap = {
-                "+": OP_ADD, "-": OP_SUB, "*": OP_MUL, "/": OP_DIV, "%": OP_MOD,
-                "==": OP_EQ, "!=": OP_NEQ, "<": OP_LT, "<=": OP_LTE, ">": OP_GT, ">=": OP_GTE,
+                "+": OP_ADD, "-": OP_SUB, "*": OP_MUL, "/": OP_DIV,
+                "%": OP_MOD,
+                "==": OP_EQ, "!=": OP_NEQ, "<": OP_LT,
+                "<=": OP_LTE, ">": OP_GT, ">=": OP_GTE
             }
-            if expr.op in opmap:
-                self._emit(opmap[expr.op], None)
-                return
+            self._emit(opmap[expr.op], None)
+            return
 
-        # ---------- Assign ----------
+        # ----- assign
         if isinstance(expr, Assign):
-            if isinstance(expr.target, Variable):
-                name = expr.target.name
-                # detect i = i + 1
-                if (
-                    isinstance(expr.value, Binary)
-                    and expr.value.op == "+"
-                    and isinstance(expr.value.left, Variable)
-                    and expr.value.left.name == name
-                    and isinstance(expr.value.right, Literal)
-                    and expr.value.right.value == 1
-                    and name in self.locals
-                ):
-                    self._emit(OP_INC_LOCAL, self.locals[name])
-                    self._emit(OP_LOAD_LOCAL, self.locals[name])
-                    return
+            name = expr.target.name
 
-                # normal assign
-                self._compile_expr(expr.value)
-                if name in self.locals:
-                    self._emit(OP_STORE_LOCAL, self.locals[name])
-                    self._emit(OP_LOAD_LOCAL, self.locals[name])
-                else:
-                    self._emit(OP_STORE_GLOBAL, name)
-                    self._emit(OP_LOAD_GLOBAL, name)
+            # detect i = i + 1
+            if (isinstance(expr.value, Binary)
+                and expr.value.op == "+"
+                and isinstance(expr.value.left, Variable)
+                and expr.value.left.name == name
+                and isinstance(expr.value.right, Literal)
+                and expr.value.right.value == 1
+                and name in self.locals):
+
+                idx = self.locals[name]
+                self._emit(OP_INC_LOCAL, idx)
+                self._emit(OP_LOAD_LOCAL, idx)
                 return
 
-            # attribute assign
-            if isinstance(expr.target, Member):
-                self._compile_expr(expr.target.base)
-                self._compile_expr(expr.value)
-                self._emit(OP_STORE_ATTR, expr.target.name)
-                return
+            # regular assignment
+            self._compile_expr(expr.value)
+            if name in self.locals:
+                idx = self.locals[name]
+                self._emit(OP_STORE_LOCAL, idx)
+                self._emit(OP_LOAD_LOCAL, idx)
+            else:
+                self._emit(OP_STORE_GLOBAL, name)
+                self._emit(OP_LOAD_GLOBAL, name)
+            return
 
-        # ---------- Member ----------
+        # ---- member load
         if isinstance(expr, Member):
             self._compile_expr(expr.base)
             self._emit(OP_LOAD_ATTR, expr.name)
             return
 
-        # ---------- Function Expr ----------
+        # ---- function expr
         if isinstance(expr, FunctionExpr):
             idx = self._add_const(expr)
             self._emit(OP_MAKE_FUNCTION, ("AST", idx))
             return
 
-        # ---------- Call ----------
+        # ---- call
         if isinstance(expr, Call):
             self._compile_expr(expr.callee)
             for a in expr.arguments:
@@ -491,11 +444,9 @@ class Compiler:
             self._emit(OP_CALL, len(expr.arguments))
             return
 
-        raise CompileError(f"Unhandled expression: {type(expr).__name__}")
+        raise CompileError("Unknown expr")
 
-# ---------------------------------
-# Top-level helper
-# ---------------------------------
-def compile_module_to_code(stmts: List[Stmt], name: str = "<module>", verbose=False) -> Code:
+
+def compile_module_to_code(stmts, name="<module>", verbose=False):
     c = Compiler(verbose)
     return c.compile_module(stmts, name)
