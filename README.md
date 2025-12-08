@@ -6,66 +6,42 @@
 ██║     ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║
 ╚═╝     ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝
 ```
-# 🦅 Falcon — A Lightweight Modern Programming Language (Prototype)
 
-Falcon is a **lightweight, expressive programming language** designed to be fast, readable, and developer-friendly.
-This repository contains the **prototype interpreter**, fully implemented in Python, including:
+# 🦅 Falcon — A Modern Lightweight Programming Language  
+**Fast. Expressive. Hackable. Built for experiments and real projects.**
 
-* Lexer (tokenizer)
-* Parser → AST
-* Interpreter with lexical scoping
-* Built-in functions
-* REPL shell
-* Example Falcon programs (`.fn` files)
+Falcon is a **small, modern programming language** designed to be:
 
-Falcon is evolving toward a modern scripting environment with async, modules, and a future bytecode VM — but this prototype focuses on core semantics and experimentation.
+- 🧠 **Easy to learn** (clean syntax, predictable semantics)  
+- ⚡ **Fast** (hybrid **VM + interpreter** execution model)  
+- 🧱 **Modular & extensible** (clean compiler architecture)  
+- 🦾 **Capable** (closures, loops, functions, expressions, built-ins)
+
+This repository contains the full Falcon **prototype implementation**, including:
+
+- Lexer  
+- Parser → AST  
+- Hybrid Interpreter  
+- Bytecode Compiler  
+- Stack-based Virtual Machine  
+- REPL  
+- Built-in functions  
+- Sample `.fn` programs  
+
+Falcon is actively evolving toward a **production-grade scripting language** with modules, async, optimized bytecode, and an ahead-of-time compiler.
 
 ---
 
-## ✨ Features (Prototype v0.2)
+# ✨ Highlights (Prototype v0.3)
 
-* Unique Falcon syntax (`var`, `const`, `:=`, `::` method calls)
-* First-class functions and closures
-* Assignment expressions
-* Block scoping with shadowing
-* Built-in functions (`print`, `len`, `range`, `console::log`, file I/O, etc.)
-* REPL with multiline parsing & history
-* Expression & statement execution
-* Extensible design for language research
-
-Example Falcon code:
-
+### ✔ Falcon Syntax  
 ```
 var x := 10;
 function add(a, b) { return a + b; }
-
-print(add(x, 20));
+show(add(x, 20));
 ```
 
----
-
-## 🔁 New Loop Syntax (Falcon-style)
-
-**For-loop:**
-
-```
-for var i := 1 to 5 step 1 {
-    print(i);
-}
-```
-
-**Infinite loop:**
-
-```
-loop {
-    print("infinite loop running...");
-}
-```
-
----
-
-## 🧸 Closures
-
+### ✔ Closures  
 ```
 function makeCounter() {
     var c := 0;
@@ -76,40 +52,49 @@ function makeCounter() {
 }
 
 var next := makeCounter();
-print(next());  # 1
-print(next());  # 2
+show(next());  # 1
+show(next());  # 2
 ```
+
+### ✔ Falcon Loop System  
+```
+for var i := 1 to 5 step 1 {
+    show(i);
+}
+
+loop {
+    show("Running...");
+}
+```
+
+### ✔ Hybrid Execution Model  
+Falcon runs code through:
+
+1. **Compiler → Bytecode**  
+2. **VM executes bytecode**  
+3. Automatically **falls back to interpreter** when closures or complex features require dynamic semantics.
 
 ---
 
-## 📦 Clone the Repository
+# 📦 Installation (Development Mode)
+
+Clone:
 
 ```bash
 git clone https://github.com/Gabrial-8467/falcon.git
 cd falcon
 ```
 
----
-
-## 🛠 Development Setup
-
-Create a virtual environment:
+Set up environment:
 
 ```bash
-python -m venv .venv
+python -m venv myenv
+myenv\Scripts\activate  # Windows
+# or
+source myenv/bin/activate
 ```
 
-Activate it:
-
-```bash
-# Linux / macOS
-source .venv/bin/activate
-
-# Windows
-.venv\Scripts\activate
-```
-
-Install optional dev tools:
+Install dev dependencies (optional):
 
 ```bash
 pip install -r requirements.txt
@@ -117,7 +102,7 @@ pip install -r requirements.txt
 
 ---
 
-## ▶ Running the REPL
+# ▶ Running the REPL
 
 ```bash
 python -m falcon.repl
@@ -126,107 +111,70 @@ python -m falcon.repl
 Example:
 
 ```
-Falcon v0.2 — REPL
+Falcon REPL — v0.3  
 falcon> var x := 5;
 falcon> x * 2
 10
-falcon> :quit
+falcon> .quit
 ```
 
 ---
 
-## ▶ Running a Falcon Program
+# ▶ Running a Falcon Program
 
 ```bash
-python -m falcon.main run examples/hello.fn
+python -m falcon.runner examples/hello.fn
 ```
 
-Output:
+VM output example:
 
 ```
+Compiled module: examples/hello.fn
+[VM] Running...
 Hello, Falcon!
 ```
 
 ---
 
-## 📂 Project Structure
-
+# 📂 Project Structure  
 ```
-falcon-prototype/
-├── README.md
-├── CHARTER.md
-├── LICENSE
-├── pyproject.toml
-├── requirements.txt
+falcon/
+├── lexer.py          # Tokenizer
+├── tokens.py         # Token definitions
+├── parser.py         # Recursive-descent parser → AST
+├── ast_nodes.py      # AST classes
+├── precedence.py     # Operator precedence map
 │
-├── src/
-│   ├── falcon/
-│   │   ├── __init__.py
-│   │   ├── main.py                  # CLI entry: runs files or repl
-│   │   │
-│   │   ├── lexer.py                 # tokenizer for .fn source
-│   │   ├── tokens.py                # token constants / Token class
-│   │   │
-│   │   ├── parser.py                # recursive-descent parser -> AST
-│   │   ├── ast_nodes.py             # AST node classes
-│   │   ├── precedence.py            # operator precedence table
-│   │   │── vm.py
-│   │   ├── interpreter.py           # AST evaluator (env, execution)
-│   │   ├── env.py                   # Environment / Scope system
-│   │   ├── builtins.py              # builtins (print, len, range, etc.)
-│   │   │── compiler.py
-│   │   ├── repl.py                  # interactive REPL
-│   │   ├── runner.py                # executes .fn files
-│   │   │
-│   │   └── utils/
-│   │       ├── __init__.py
-│   │       ├── errors.py
-│   │       ├── file_loader.py
-│   │       └── text_helpers.py
-│   │
-│   └── tests/                       # pytest suite
-│       ├── test_lexer.py
-│       ├── test_parser.py
-│       ├── test_interpreter.py
-│       ├── test_examples.py
+├── compiler.py       # AST → bytecode compiler
+├── vm.py             # Stack-based virtual machine
+├── interpreter.py    # AST interpreter (fallback for closures)
 │
-├── examples/
-│   ├── hello.fn
-│   ├── factorial.fn
-│   ├── closure.fn
-│   └── async_stub.fn
+├── env.py            # Lexical scope environment
+├── builtins.py       # Built-in functions + Promise stub
 │
-├── docs/
-│   ├── quickstart.md
-│   ├── syntax.md
-│   └── roadmap.md
-│
-└── tools/
-    └── run_example.py
+├── repl.py           # Interactive shell
+├── runner.py         # File execution pipeline
 ```
 
 ---
 
-## 📘 Example Programs
+# 📘 Example Programs
 
-**hello.fn**
-
+### **hello.fn**
 ```
-print("Hello, Falcon!");
+show("Hello from Falcon!");
 ```
 
-**factorial.fn**
-
+### **factorial.fn**
 ```
 function fact(n) {
     if (n == 0) { return 1; }
     return n * fact(n - 1);
 }
-print(fact(6));
+show(fact(6));
 ```
 
-**closure.fn**
-
+### **closure.fn**
 ```
 function makeAdder(x) {
     return function(y) {
@@ -234,45 +182,62 @@ function makeAdder(x) {
     };
 }
 var add2 := makeAdder(2);
-print(add2(5));
+show(add2(10));
 ```
 
 ---
 
-## 🛣 Roadmap
+# 🛣 Roadmap (Active Development)
 
-Planned improvements:
+### 🚀 Language  
+- [ ] Arrays & Maps  
+- [ ] Pattern Matching  
+- [ ] Type annotations  
+- [ ] Async / await  
+- [ ] Modules (`import`)  
 
-* [ ] Arrays & maps
-* [ ] Module system (`import`)
-* [ ] Pattern matching
-* [ ] Async/await engine
-* [ ] Bytecode compiler & VM
-* [ ] Formatter (`falcon fmt`)
-* [ ] LSP server for editor support
+### ⚙ Runtime  
+- [ ] Optimizing bytecode VM  
+- [ ] JIT compilation (optional)  
+- [ ] Debugger + stack traces  
 
-This prototype intentionally focuses on simplicity — the next milestones expand Falcon into a full scripting language.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! You can help with:
-
-* Improving the parser / AST
-* Adding built-in functions
-* Designing language features
-* Writing docs & examples
-
-Open an issue or PR anytime.
+### 🛠 Tooling  
+- [ ] `falcon fmt` — code formatter  
+- [ ] LSP server for VS Code  
+- [ ] Package manager  
+- [ ] Installer (.exe / .msi / .deb)  
 
 ---
 
-## 📜 License
+# 🤝 Contributing
 
-Licensed under the **Apache License 2.0**.
-See the `LICENSE` file for details.
+You can help by:
+
+- Improving the parser / VM  
+- Adding built-in functions  
+- Expanding the compiler  
+- Writing documentation  
+- Testing examples  
+
+PRs and issues are always welcome!
 
 ---
 
+# 📜 License  
+Released under **Apache License 2.0**.  
+See `LICENSE` for details.
 
+---
+
+# 🦅 Falcon — “Small language. Big possibilities.”
+Falcon is built to grow — from a prototype VM to a complete, fast scripting language.
+
+If you'd like, I can also generate:
+
+✅ A logo  
+✅ Website for documentation  
+✅ Syntax highlighter for VS Code  
+✅ Installer generator (PyInstaller / NSIS)  
+✅ Nice CLI scaffolding (`falcon new project`)  
+
+Just tell me — I’m ready.
