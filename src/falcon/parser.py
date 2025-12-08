@@ -22,7 +22,7 @@ from .tokens import Token, TokenType
 from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
-    FunctionStmt, ReturnStmt, ForStmt, LoopStmt
+    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt
 )
 from .precedence import PREC
 
@@ -113,6 +113,13 @@ class Parser:
             self._consume(TokenType.LBRACE, "Expect '{' after 'loop'")
             body_stmts = self._block()
             return LoopStmt(BlockStmt(body_stmts))
+
+        # break
+        if self._match(TokenType.BREAK):
+            # consume optional semicolon/newline and return BreakStmt
+            token = self._previous()
+            self._optional_semicolon()
+            return BreakStmt(token)
 
         # block
         if self._match(TokenType.LBRACE):

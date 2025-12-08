@@ -186,6 +186,18 @@ class LoopStmt(Stmt):
         return f"LoopStmt({self.body!r})"
 
 
+@dataclass
+class BreakStmt(Stmt):
+    """
+    AST node representing a `break` statement.
+    Used to exit the nearest enclosing loop.
+    """
+    token: Optional[Any] = None
+
+    def __repr__(self) -> str:
+        return "<BreakStmt>"
+
+
 # ================================================================
 # Functions & Return
 # ================================================================
