@@ -138,22 +138,57 @@ Hello, Falcon!
 
 # 📂 Project Structure  
 ```
-falcon/
-├── lexer.py          # Tokenizer
-├── tokens.py         # Token definitions
-├── parser.py         # Recursive-descent parser → AST
-├── ast_nodes.py      # AST classes
-├── precedence.py     # Operator precedence map
+falcon-prototype/
+├── README.md
+├── CHARTER.md
+├── LICENSE
+├── pyproject.toml
+├── requirements.txt
 │
-├── compiler.py       # AST → bytecode compiler
-├── vm.py             # Stack-based virtual machine
-├── interpreter.py    # AST interpreter (fallback for closures)
+├── src/
+│   ├── falcon/
+│   │   ├── __init__.py
+│   │   ├── main.py                  # CLI entry: runs files or repl
+│   │   │
+│   │   ├── lexer.py                 # tokenizer for .fn source
+│   │   ├── tokens.py                # token constants / Token class
+│   │   │
+│   │   ├── parser.py                # recursive-descent parser -> AST
+│   │   ├── ast_nodes.py             # AST node classes
+│   │   ├── precedence.py            # operator precedence table
+│   │   │── vm.py
+│   │   ├── interpreter.py           # AST evaluator (env, execution)
+│   │   ├── env.py                   # Environment / Scope system
+│   │   ├── builtins.py              # builtins (print, len, range, etc.)
+│   │   │── compiler.py
+│   │   ├── repl.py                  # interactive REPL
+│   │   ├── runner.py                # executes .fn files
+│   │   │
+│   │   └── utils/
+│   │       ├── __init__.py
+│   │       ├── errors.py
+│   │       ├── file_loader.py
+│   │       └── text_helpers.py
+│   │
+│   └── tests/                       # pytest suite
+│       ├── test_lexer.py
+│       ├── test_parser.py
+│       ├── test_interpreter.py
+│       ├── test_examples.py
 │
-├── env.py            # Lexical scope environment
-├── builtins.py       # Built-in functions + Promise stub
+├── examples/
+│   ├── hello.fn
+│   ├── factorial.fn
+│   ├── closure.fn
+│   └── async_stub.fn
 │
-├── repl.py           # Interactive shell
-├── runner.py         # File execution pipeline
+├── docs/
+│   ├── quickstart.md
+│   ├── syntax.md
+│   └── roadmap.md
+│
+└── tools/
+    └── run_example.py
 ```
 
 ---
