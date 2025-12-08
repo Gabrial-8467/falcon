@@ -17,7 +17,7 @@ import itertools
 from .ast_nodes import (
     Stmt, Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt, FunctionStmt, ReturnStmt,
-    ForStmt, LoopStmt, ExprStmt
+    ForStmt, LoopStmt, ExprStmt, BreakStmt
 )
 
 # -------------------------
@@ -106,6 +106,10 @@ class Compiler:
         self.name: str = "<module>"
         self.verbose = verbose
 
+        # loop stack for break/continue backpatching
+        # each entry is dict like: {"break_positions": [instr_idx, ...], "start_ip": int}
+        self.loop_stack: List[Dict[str, Any]] = []
+
     # -------------------------
     # Public API
     # -------------------------
@@ -190,11 +194,13 @@ class Compiler:
     # Statement compilation
     # -------------------------
     def _compile_stmt(self, stmt: Stmt):
+        # --- Block ---
         if isinstance(stmt, BlockStmt):
             for s in stmt.body:
                 self._compile_stmt(s)
             return
 
+        # --- Let ---
         if isinstance(stmt, LetStmt):
             init = stmt.initializer
             if init is None:
@@ -211,16 +217,19 @@ class Compiler:
                 self._emit(OP_STORE_GLOBAL, stmt.name)
             return
 
+        # --- Print ---
         if isinstance(stmt, PrintStmt):
             self._compile_expr(stmt.expr)
             self._emit(OP_PRINT, None)
             return
 
+        # --- ExprStmt ---
         if isinstance(stmt, ExprStmt):
             self._compile_expr(stmt.expr)
             self._emit(OP_POP, None)
             return
 
+        # --- If ---
         if isinstance(stmt, IfStmt):
             self._compile_expr(stmt.condition)
             jfalse = self._emit_jump(OP_JUMP_IF_FALSE)
@@ -232,15 +241,31 @@ class Compiler:
             self._patch_jump(jdone, len(self.instructions))
             return
 
+        # --- While (with loop context) ---
         if isinstance(stmt, WhileStmt):
             start_ip = len(self.instructions)
             self._compile_expr(stmt.condition)
             jexit = self._emit_jump(OP_JUMP_IF_FALSE)
+
+            # push loop context
+            ctx = {"start_ip": start_ip, "break_positions": []}
+            self.loop_stack.append(ctx)
+
             self._compile_stmt(stmt.body)
             self._emit(OP_JUMP, start_ip)
-            self._patch_jump(jexit, len(self.instructions))
+
+            # loop end
+            loop_end = len(self.instructions)
+            # patch exit conditional
+            self._patch_jump(jexit, loop_end)
+            # patch breaks
+            for bp in ctx["break_positions"]:
+                self._patch_jump(bp, loop_end)
+
+            self.loop_stack.pop()
             return
 
+        # --- For (with loop context) ---
         if isinstance(stmt, ForStmt):
             # for var i := START to END [step STEP] { body }
             iter_idx = self._alloc_local(stmt.name)
@@ -287,6 +312,10 @@ class Compiler:
             # body label:
             self._patch_jump(jgoto_body, len(self.instructions))
 
+            # push loop context for breaks inside the body
+            ctx = {"start_ip": len(self.instructions), "break_positions": []}
+            self.loop_stack.append(ctx)
+
             # body:
             self._compile_stmt(stmt.body)
 
@@ -300,16 +329,36 @@ class Compiler:
             self._emit(OP_JUMP, start_check_ip)
 
             # patch exits
-            self._patch_jump(jexit1, len(self.instructions))
-            self._patch_jump(jexit2, len(self.instructions))
+            loop_end = len(self.instructions)
+            self._patch_jump(jexit1, loop_end)
+            self._patch_jump(jexit2, loop_end)
+
+            # patch breaks recorded
+            for bp in ctx["break_positions"]:
+                self._patch_jump(bp, loop_end)
+
+            self.loop_stack.pop()
             return
 
+        # --- Loop (infinite) ---
         if isinstance(stmt, LoopStmt):
             start_ip = len(self.instructions)
+            # push loop context
+            ctx = {"start_ip": start_ip, "break_positions": []}
+            self.loop_stack.append(ctx)
+
             self._compile_stmt(stmt.body)
             self._emit(OP_JUMP, start_ip)
+
+            # patch breaks
+            loop_end = len(self.instructions)
+            for bp in ctx["break_positions"]:
+                self._patch_jump(bp, loop_end)
+
+            self.loop_stack.pop()
             return
 
+        # --- Function ---
         if isinstance(stmt, FunctionStmt):
             code_obj = self.compile_function(stmt)
             const_idx = self._add_const(code_obj)
@@ -317,12 +366,22 @@ class Compiler:
             self._emit(OP_STORE_GLOBAL, stmt.name)
             return
 
+        # --- Return ---
         if isinstance(stmt, ReturnStmt):
             if stmt.value is not None:
                 self._compile_expr(stmt.value)
             else:
                 self._emit(OP_LOAD_CONST, self._add_const(None))
             self._emit(OP_RETURN, None)
+            return
+
+        # --- Break ---
+        if isinstance(stmt, BreakStmt):
+            if not self.loop_stack:
+                raise CompileError("Compile error: 'break' used outside loop")
+            # emit jump placeholder and record for backpatch
+            pos = self._emit_jump(OP_JUMP)
+            self.loop_stack[-1]["break_positions"].append(pos)
             return
 
         raise CompileError(f"Unhandled statement type in compiler: {type(stmt).__name__}")
