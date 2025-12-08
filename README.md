@@ -170,11 +170,11 @@ falcon-prototype/
 │   │   ├── parser.py                # recursive-descent parser -> AST
 │   │   ├── ast_nodes.py             # AST node classes
 │   │   ├── precedence.py            # operator precedence table
-│   │   │
+│   │   │── vm.py
 │   │   ├── interpreter.py           # AST evaluator (env, execution)
 │   │   ├── env.py                   # Environment / Scope system
 │   │   ├── builtins.py              # builtins (print, len, range, etc.)
-│   │   │
+│   │   │── compiler.py
 │   │   ├── repl.py                  # interactive REPL
 │   │   ├── runner.py                # executes .fn files
 │   │   │

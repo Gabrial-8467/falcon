@@ -1,10 +1,10 @@
-var n = 5;
-var result = 1;
+var i := 1;
 
-var i = 1;
-while (i <= n) {
-    result = result * i;
-    i = i + 1;
+loop {
+    if (i > 100000) {
+        break;
+    }
+
+    show("Tick: " + i);
+    i := i + 1;
 }
-
-show("factorial(" + n + ") = " + result);

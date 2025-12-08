@@ -44,12 +44,25 @@ class Parser:
 
     # ---------------- top-level ----------------
     def _declaration(self) -> Stmt:
+        # handle explicit keywords first
         if self._match(TokenType.VAR):
             return self._var_or_const_declaration(is_const=False)
         if self._match(TokenType.CONST):
             return self._var_or_const_declaration(is_const=True)
         if self._match(TokenType.FUNCTION):
             return self._function_declaration()
+
+        # NEW: shorthand declaration form: IDENT DECL expr  (e.g. `i := 1`)
+        # We only treat this as a declaration when the current token is IDENT and
+        # the next token is DECL. Don't consume anything unless we're sure.
+        if self._check(TokenType.IDENT) and self._peek_next().type == TokenType.DECL:
+            # consume IDENT and DECL then parse initializer expression
+            name_tok = self._advance()   # consume IDENT
+            self._advance()              # consume DECL (':=')
+            initializer = self._expression()
+            self._optional_semicolon()
+            return LetStmt(name_tok.lexeme, initializer, is_const=False)
+
         return self._statement()
 
     def _var_or_const_declaration(self, is_const: bool) -> Stmt:
@@ -336,6 +349,13 @@ class Parser:
 
     def _peek(self) -> Token:
         return self.tokens[self.current]
+
+    def _peek_next(self) -> Token:
+        idx = self.current + 1
+        if idx >= len(self.tokens):
+            return self.tokens[-1]
+        return self.tokens[idx]
+
 
     def _previous(self) -> Token:
         return self.tokens[self.current - 1]

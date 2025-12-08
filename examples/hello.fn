@@ -15,7 +15,8 @@ show("x + y =", add(x, y));
 // --- 4. If / else ---
 if (x > y) {
     show("x is greater");
-} else {
+} 
+else {
     show("y is greater");
 }
 
