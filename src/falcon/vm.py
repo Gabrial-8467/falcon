@@ -292,6 +292,7 @@ class VM:
 
         return None
 
+
     @staticmethod
     def _truthy(v):
         if v is None: return False
