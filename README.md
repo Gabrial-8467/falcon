@@ -8,12 +8,12 @@
 ```
 
 # 🦅 Falcon — A Modern Lightweight Programming Language  
-**Fast. Expressive. Hackable. Built for experiments and real projects.**
+**Expressive. Hackable. Built for experiments and real projects.**
 
 Falcon is a **small, modern programming language** designed to be:
 
 - 🧠 **Easy to learn** (clean syntax, predictable semantics)  
-- ⚡ **Fast** (hybrid **VM + interpreter** execution model)  
+- ⚡ hybrid **VM + interpreter** execution model  
 - 🧱 **Modular & extensible** (clean compiler architecture)  
 - 🦾 **Capable** (closures, loops, functions, expressions, built-ins)
 
@@ -265,13 +265,6 @@ See `LICENSE` for details.
 ---
 
 # 🦅 Falcon — “Small language. Big possibilities.”
-Falcon is built to grow — from a prototype VM to a complete, fast scripting language.
-
-If you'd like, I can also generate:
-
-✅ A logo  
-✅ Website for documentation  
-✅ Syntax highlighter for VS Code  
-✅ Installer generator (PyInstaller / NSIS)  
-✅ Nice CLI scaffolding (`falcon new project`)  
+Falcon is built to grow — from a prototype VM to a complete, scripting language.
+  
 
