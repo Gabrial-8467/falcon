@@ -101,6 +101,11 @@ pip install -r requirements.txt
 ```
 
 ---
+# ▶ Installing Build Dpendencies
+
+```bash
+pip install -e .
+```
 
 # ▶ Running the REPL
 
