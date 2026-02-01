@@ -37,8 +37,10 @@ Falcon is actively evolving toward a **production-grade scripting language** wit
 ### ✔ Falcon Syntax  
 ```
 var x := 10;
+let y := 20;  # `let` works as an alias for `var`
 function add(a, b) { return a + b; }
 show(add(x, 20));
+// `let` can be used interchangeably with `var`
 ```
 
 ### ✔ Closures  
