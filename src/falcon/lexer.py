@@ -18,7 +18,7 @@ from .utils.text_helpers import is_alpha, is_alnum
 
 KEYWORDS = {
     "var": TokenType.VAR,
-    "let": TokenType.VAR,
+    "let": TokenType.LET,
     "const": TokenType.CONST,
     "if": TokenType.IF,
     "else": TokenType.ELSE,

@@ -51,8 +51,8 @@ class Parser:
             return self._var_or_const_declaration(is_const=True)
         if self._match(TokenType.FUNCTION):
             return self._function_declaration()
-
-        # NEW: shorthand declaration form: IDENT DECL expr  (e.g. `i := 1`)
+        if self._match(TokenType.LET):
+            return self._var_or_const_declaration(is_const=False)
         # We only treat this as a declaration when the current token is IDENT and
         # the next token is DECL. Don't consume anything unless we're sure.
         if self._check(TokenType.IDENT) and self._peek_next().type == TokenType.DECL:

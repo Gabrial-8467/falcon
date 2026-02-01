@@ -40,6 +40,7 @@ class TokenType(Enum):
 
     # --- Keywords (language) ---
     VAR = auto()        # var
+    LET = auto()        # let (block‑scoped)
     CONST = auto()      # const
     IF = auto()
     ELSE = auto()

@@ -102,22 +102,22 @@ class ExprStmt(Stmt):
 
 
 @dataclass
-class LetStmt(Stmt):
+class LetBlockStmt(Stmt):
     """
-    Falcon variable declaration:
-
-        var x := 10;
-        const y := 20;
-
-    Only `var` and `const` exist — no `let`.
+    Block‑scoped let declaration.
+    name: variable name
+    initializer: optional Expr for initial value
+    is_const: bool (future extension, currently always False for let)
+    block: BlockStmt – body executed with its own environment where the variable is scoped
     """
     name: str
     initializer: Optional[Expr] = None
-    is_const: bool = False  # True = const, False = var
-
+    is_const: bool = False
+    block: "BlockStmt" = None
     def __repr__(self) -> str:
-        kind = "const" if self.is_const else "var"
-        return f"LetStmt({kind} {self.name}, {self.initializer!r})"
+        kind = "let"
+        return f"LetBlockStmt({kind} {self.name}, init={self.initializer!r}, block={self.block!r})"
+
 
 
 # RESTORED — parser and interpreter require this
