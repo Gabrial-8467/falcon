@@ -102,10 +102,11 @@ class ExprStmt(Stmt):
 
 
 @dataclass
-class LetBlockStmt(Stmt):
-    # The node represents a declaration. `is_var` is True for the `var` keyword.
-    # `is_const` is True for `const`. `let` has both flags False.
+class TypeAnnotation:
+    name: str
+    # Future: could hold more info (e.g., generic parameters)
 
+# ... existing imports above ...
     """
     Block‑scoped let declaration.
     name: variable name
@@ -116,13 +117,9 @@ class LetBlockStmt(Stmt):
     name: str
     initializer: Optional[Expr] = None
     is_const: bool = False
-    is_var: bool = False
-    is_var: bool = False
+    type_ann: Optional[TypeAnnotation] = None
     block: "BlockStmt" = None
-    def __repr__(self) -> str:
-        kind = "let"
-        return f"LetBlockStmt({kind} {self.name}, init={self.initializer!r}, block={self.block!r})"
-
+    LetStmt = LetBlockStmt
 
 
 # RESTORED — parser and interpreter require this

@@ -23,7 +23,7 @@ class Environment:
         self.values: Dict[str, Any] = {}
         # track which names are const in this environment
         self.consts: Set[str] = set()
-        self.is_function_scope: bool = False
+        self.parent = parent
 
     # -------------------------
     # Variable Definition: var x := value

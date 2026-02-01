@@ -55,6 +55,8 @@ class Function:
         local = Environment(self.closure)
         local.is_function_scope = True
         local.is_function_scope = True
+        local.is_function_scope = True
+        local.is_function_scope = True
         for name, val in zip(self.params, args):
             local.define(name, val)
         if self.name:

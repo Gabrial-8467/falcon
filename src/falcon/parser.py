@@ -46,13 +46,13 @@ class Parser:
     def _declaration(self) -> Stmt:
         # handle explicit keywords first
         if self._match(TokenType.VAR):
-            return self._var_or_const_declaration(is_const=False)
+            return self._var_or_const_declaration(is_const=False, is_var=True)
         if self._match(TokenType.CONST):
             return self._var_or_const_declaration(is_const=True)
         if self._match(TokenType.FUNCTION):
             return self._function_declaration()
         if self._match(TokenType.LET):
-            return self._var_or_const_declaration(is_const=False)
+            return self._var_or_const_declaration(is_const=False, is_var=False)
         # We only treat this as a declaration when the current token is IDENT and
         # the next token is DECL. Don't consume anything unless we're sure.
         if self._check(TokenType.IDENT) and self._peek_next().type == TokenType.DECL:
@@ -65,7 +65,7 @@ class Parser:
 
         return self._statement()
 
-    def _var_or_const_declaration(self, is_const: bool) -> Stmt:
+    def _var_or_const_declaration(self, is_const: bool, is_var: bool) -> Stmt:
         name_tok = self._consume(TokenType.IDENT, "Expect variable name after declaration")
         name = name_tok.lexeme
         initializer: Optional[Expr] = None
@@ -77,7 +77,7 @@ class Parser:
             initializer = self._expression()
 
         self._optional_semicolon()
-        return LetStmt(name, initializer, is_const=is_const, is_var=False)
+        return LetStmt(name, initializer, is_const=is_const, is_var=is_var)
 
     def _function_declaration(self) -> Stmt:
         name_tok = self._consume(TokenType.IDENT, "Expect function name after 'function'")
