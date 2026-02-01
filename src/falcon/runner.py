@@ -72,6 +72,12 @@ def dump_vm_debug(vm: VM):
 # MAIN EXECUTION LOGIC
 # --------------------------------------------
 def run_file(path: str) -> int:
+    if not path.lower().endswith('.fn'):
+        print(f"{path}: Error – only .fn files are supported.")
+        return 1
+    if not path.lower().endswith('.fn'):
+        print(f"Error: Only .fn Falcon source files are supported (got '{path}').")
+        return 1
     src = read_source(path)
 
     # Per-stage timers
@@ -212,6 +218,10 @@ def main(argv: List[str] | None = None) -> int:
         print("Usage: python -m falcon.runner path/to/file.fn")
         return 1
     path = argv[0]
+    # Enforce .fn extension – only Falcon source files are allowed
+    if pathlib.Path(path).suffix.lower() != ".fn":
+        print(f"Error: Only .fn files are supported. Received '{path}'.")
+        return 2
 
     try:
         return run_file(path)
