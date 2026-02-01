@@ -61,7 +61,7 @@ class Parser:
             self._advance()              # consume DECL (':=')
             initializer = self._expression()
             self._optional_semicolon()
-            return LetStmt(name_tok.lexeme, initializer, is_const=False)
+            return LetStmt(name_tok.lexeme, initializer, is_const=False, is_var=True)
 
         return self._statement()
 
@@ -77,7 +77,7 @@ class Parser:
             initializer = self._expression()
 
         self._optional_semicolon()
-        return LetStmt(name, initializer, is_const=is_const)
+        return LetStmt(name, initializer, is_const=is_const, is_var=False)
 
     def _function_declaration(self) -> Stmt:
         name_tok = self._consume(TokenType.IDENT, "Expect function name after 'function'")

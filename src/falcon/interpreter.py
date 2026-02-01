@@ -53,6 +53,8 @@ class Function:
         if len(args) != len(self.params):
             raise InterpreterError(f"Function expected {len(self.params)} args but got {len(args)}")
         local = Environment(self.closure)
+        local.is_function_scope = True
+        local.is_function_scope = True
         for name, val in zip(self.params, args):
             local.define(name, val)
         if self.name:
@@ -67,19 +69,38 @@ class Function:
         return None
 
 
-class Interpreter:
     def __init__(self):
         self.globals = Environment()
-        # register builtins as constants to avoid accidental reassignment
         for name, fn in BUILTINS.items():
-            # it's okay if builtins already include 'show'
             self.globals.define(name, fn, is_const=True)
-
-        # track loop nesting depth to validate 'break' usage
         self._loop_depth = 0
+        self._loop_depth = 0
+    def _function_env(self, env: Environment) -> Environment:
+        """Return the nearest function-scope environment (or globals)."""
+        while env is not None and not getattr(env, "is_function_scope", False):
+            env = env.parent
+        return env if env is not None else self.globals
+
+    def _hoist_vars(self, stmts: List[Stmt], env: Environment) -> None:
+        """Pre‑declare all `var` declarations in the given environment.
+        Variables are defined with value None (JS `undefined`)."""
+        for stmt in stmts:
+            if isinstance(stmt, LetStmt) and getattr(stmt, "is_var", False):
+                func_env = self._function_env(env)
+                if stmt.name not in func_env.values:
+                    func_env.define(stmt.name, None, is_const=False)
+            # Recurse into blocks
+            if isinstance(stmt, BlockStmt):
+                self._hoist_vars(stmt.body, env)
+            # Functions introduce new scopes – do not hoist inside them
+            if isinstance(stmt, FunctionStmt):
+                continue
+
+        # Hoisting does not reinitialize globals; globals are set in __init__
 
 
     def interpret(self, stmts: List[Stmt]) -> None:
+        self._hoist_vars(stmts, self.globals)
         try:
             for s in stmts:
                 self._execute(s, self.globals)
@@ -97,7 +118,8 @@ class Interpreter:
 
         if isinstance(stmt, LetStmt):
             value = self._eval(stmt.initializer, env) if stmt.initializer is not None else None
-            env.define(stmt.name, value, is_const=getattr(stmt, "is_const", False))
+            target_env = self._function_env(env) if getattr(stmt, "is_var", False) else env
+            target_env.define(stmt.name, value, is_const=getattr(stmt, "is_const", False))
             return
 
         if isinstance(stmt, BlockStmt):

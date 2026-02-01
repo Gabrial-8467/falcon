@@ -103,6 +103,9 @@ class ExprStmt(Stmt):
 
 @dataclass
 class LetBlockStmt(Stmt):
+    # The node represents a declaration. `is_var` is True for the `var` keyword.
+    # `is_const` is True for `const`. `let` has both flags False.
+
     """
     Block‑scoped let declaration.
     name: variable name
@@ -113,6 +116,8 @@ class LetBlockStmt(Stmt):
     name: str
     initializer: Optional[Expr] = None
     is_const: bool = False
+    is_var: bool = False
+    is_var: bool = False
     block: "BlockStmt" = None
     def __repr__(self) -> str:
         kind = "let"
