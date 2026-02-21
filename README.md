@@ -189,66 +189,68 @@ Hello, Falcon!
 
 ---
 
-# 📂 Project Structure  
+<!-- # 📂 Project Structure  
 ```
 falcon-prototype/
-├── README.md
-├── CHARTER.md
-├── LICENSE
-├── pyproject.toml
-├── requirements.txt
+├── README.md                 # Main documentation and getting started guide
+├── CHARTER.md               # Language design principles and goals
+├── LICENSE                  # Apache License 2.0
+├── pyproject.toml           # Python package configuration
+├── requirements.txt          # Development dependencies
 │
-├── src/
-│   ├── falcon/
-│   │   ├── __init__.py
-│   │   ├── main.py                  # CLI entry: runs files or repl
+├── src/                     # Source code directory
+│   ├── falcon/              # Main language package
+│   │   ├── __init__.py      # Package initialization and entry points
+│   │   ├── main.py          # CLI interface: runs files or starts REPL
 │   │   │
-│   │   ├── lexer.py                 # tokenizer for .fn source
-│   │   ├── tokens.py                # token constants / Token class
+│   │   ├── lexer.py         # Tokenizer: converts source text to tokens
+│   │   ├── tokens.py        # Token types and Token class definitions
 │   │   │
-│   │   ├── parser.py                # recursive-descent parser -> AST
-│   │   ├── ast_nodes.py             # AST node classes
-│   │   ├── precedence.py            # operator precedence table
-│   │   │── vm.py
-│   │   ├── interpreter.py           # AST evaluator (env, execution)
-│   │   ├── env.py                   # Environment / Scope system
-│   │   ├── builtins.py              # builtins (print, len, range, etc.)
-│   │   │── compiler.py
-│   │   ├── repl.py                  # interactive REPL
-│   │   ├── runner.py                # executes .fn files
+│   │   ├── parser.py        # Parser: builds AST from token stream
+│   │   ├── ast_nodes.py     # AST node classes for language constructs
+│   │   ├── precedence.py    # Operator precedence table for parsing
 │   │   │
-│   │   └── utils/
+│   │   ├── vm.py            # Virtual Machine: executes bytecode
+│   │   ├── interpreter.py   # AST interpreter: handles dynamic features
+│   │   ├── env.py          # Environment: variable scopes and bindings
+│   │   ├── builtins.py      # Built-in functions and runtime utilities
+│   │   │
+│   │   ├── compiler.py      # Compiler: converts AST to bytecode
+│   │   ├── repl.py          # REPL: interactive development environment
+│   │   ├── runner.py        # File runner: executes .fn programs
+│   │   │
+│   │   └── utils/          # Utility modules
 │   │       ├── __init__.py
-│   │       ├── errors.py
-│   │       ├── file_loader.py
-│   │       └── text_helpers.py
+│   │       ├── errors.py      # Custom exception classes
+│   │       ├── file_loader.py # File I/O utilities
+│   │       └── text_helpers.py # Text processing helpers
 │   │
-│   └── tests/                       # pytest suite
-│       ├── test_lexer.py
-│       ├── test_parser.py
-│       ├── test_interpreter.py
-│       ├── test_examples.py
+│   └── tests/               # Test suite
+│       ├── test_lexer.py      # Lexer unit tests
+│       ├── test_parser.py     # Parser unit tests
+│       ├── test_interpreter.py # Interpreter unit tests
+│       └── test_examples.py   # Integration tests for examples
 │
-├── examples/
-│   ├── hello.fn           # Simple Hello World
-│   ├── variables.fn       # Variable declarations
+├── examples/                # Example programs demonstrating language features
+│   ├── hello.fn           # Simple Hello World program
+│   ├── variables.fn       # Variable declarations and types
 │   ├── functions.fn       # Function types and patterns
-│   ├── operators.fn      # Arithmetic, comparison, logical ops
-│   ├── collections.fn     # Lists, tuples, dicts, sets, arrays
-│   ├── control_flow.fn    # if/else, loops, break
+│   ├── operators.fn      # Arithmetic, comparison, logical operations
+│   ├── collections.fn     # Lists, tuples, dictionaries, sets, arrays
+│   ├── control_flow.fn    # if/else, loops, break statements
 │   ├── factorial.fn       # Recursion example
 │   ├── closure.fn         # Closure demonstration
 │   ├── loop.fn           # Loop constructs
-│   └── async_stub.fn      # Async API stub
+│   └── async_stub.fn      # Promise API (synchronous stub)
 │
-├── docs/
-│   ├── quickstart.md
-│   ├── syntax.md
-│   └── roadmap.md
+├── docs/                   # Documentation files
+│   ├── quickstart.md      # Quick getting started guide
+│   ├── syntax.md         # Language syntax reference
+│   └── roadmap.md        # Development roadmap and plans
 │
-└── tools/
-    └── run_example.py
-```
+└── tools/                  # Development and utility tools
+    └── run_example.py   # Script to run example programs
+``` -->
 
 ---
 
