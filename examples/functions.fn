@@ -1,0 +1,53 @@
+// Functions Demo - Declarations, Expressions, Parameters, Return Values
+
+// Function declaration
+function add(a, b) {
+    return a + b;
+}
+
+// Function with multiple parameters
+function greet(name, age) {
+    return "Hello, " + name + "! You are " + age + " years old.";
+}
+
+// Function with no parameters
+function getCurrentYear() {
+    return 2026;
+}
+
+// Function with no return value (void function)
+function printMessage(msg) {
+    show("Message:", msg);
+}
+
+// Function expression (anonymous function)
+var multiply := function(x, y) {
+    return x * y;
+};
+
+// Higher-order function (function that takes a function)
+function applyOperation(a, b, operation) {
+    return operation(a, b);
+}
+
+// Recursive function
+function fibonacci(n) {
+    if (n <= 1) {
+        return n;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+// Test the functions
+show("add(5, 3) =", add(5, 3));
+show("greet('Alice', 30) =", greet("Alice", 30));
+show("getCurrentYear() =", getCurrentYear());
+printMessage("This is a test message");
+show("multiply(4, 7) =", multiply(4, 7));
+
+// Using higher-order function
+show("applyOperation(10, 5, add) =", applyOperation(10, 5, add));
+show("applyOperation(10, 5, multiply) =", applyOperation(10, 5, multiply));
+
+// Recursive function test
+show("fibonacci(7) =", fibonacci(7));  // Should be 13

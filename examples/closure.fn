@@ -1,3 +1,4 @@
+// Simple counter closure
 function makeCounter() {
     var c = 0;
     function inc() {
@@ -7,7 +8,20 @@ function makeCounter() {
     return inc;
 }
 
+// Create and use counter
 var counter = makeCounter();
-show(counter());
-show(counter());
-show(counter());
+show("First call:", counter());  // 1
+show("Second call:", counter()); // 2
+show("Third call:", counter());  // 3
+
+// Advanced closure with parameters
+function makeAdder(x) {
+    return function(y) {
+        return x + y;
+    };
+}
+
+var add5 = makeAdder(5);
+var add10 = makeAdder(10);
+show("5 + 3 =", add5(3));    // 8
+show("10 + 7 =", add10(7));  // 17
