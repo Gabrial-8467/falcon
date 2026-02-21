@@ -54,9 +54,53 @@ class Grouping(Expr):
 
 
 @dataclass
+class ListLiteral(Expr):
+    elements: List[Expr]
+
+    def __repr__(self) -> str:
+        return f"ListLiteral({self.elements!r})"
+
+@dataclass
+class TupleLiteral(Expr):
+    elements: List[Expr]
+
+    def __repr__(self) -> str:
+        return f"TupleLiteral({self.elements!r})"
+
+@dataclass
+class DictLiteral(Expr):
+    entries: List[tuple]
+
+    def __repr__(self) -> str:
+        return f"DictLiteral({self.entries!r})"
+
+@dataclass
+class SetLiteral(Expr):
+    elements: List[Expr]
+
+    def __repr__(self) -> str:
+        return f"SetLiteral({self.elements!r})"
+
+@dataclass
+class ArrayLiteral(Expr):
+    size_expr: Expr
+
+    def __repr__(self) -> str:
+        return f"ArrayLiteral({self.size_expr!r})"
+
+@dataclass
+class Subscript(Expr):
+    base: Expr
+    index: Expr
+
+    def __repr__(self) -> str:
+        return f"Subscript({self.base!r}[{self.index!r}])"
+
+@dataclass
 class Call(Expr):
     callee: Expr
     arguments: List[Expr]
+
     def __repr__(self) -> str:
         args = ", ".join(repr(a) for a in self.arguments)
         return f"Call({self.callee!r}, [{args}])"

@@ -10,14 +10,20 @@ from __future__ import annotations
 from typing import Any, List, Tuple, Dict
 from dataclasses import dataclass
 
-from .ast_nodes import (
+import hashlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Simple in‑memory cache: key -> Code object
+_compile_cache: Dict[str, Code] = {}
+
     Stmt, Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member,
     FunctionExpr, Assign, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
     FunctionStmt, ReturnStmt, ForStmt, LoopStmt, ExprStmt, BreakStmt
 )
 
-# -------------------------
-# Opcode integer mapping
+# Module‑level bytecode cache for fast recompilation
+_bytecode_cache: Dict[str, Code] = {}
+
 # -------------------------
 OP_LOAD_CONST   = 1
 OP_LOAD_GLOBAL  = 2
@@ -95,7 +101,9 @@ class CompileError(Exception):
 # ==========================
 class Compiler:
 
-    def __init__(self, verbose=False):
+    # Simple in-memory cache for compiled modules (source hash -> Code)
+    _cache: Dict[int, Code] = {}
+
         self.verbose = verbose
         self.instructions = []
         self.consts = []
@@ -109,6 +117,10 @@ class Compiler:
     # Public entry
     # -------------
     def compile_module(self, stmts: List[Stmt], name="<module>"):
+        # Compute a hash of the AST structure for caching
+        ast_hash = hash(str(stmts))
+        if ast_hash in self._cache:
+            return self._cache[ast_hash]
         self.__init__(self.verbose)
         self.name = name
 
@@ -118,7 +130,12 @@ class Compiler:
         self._emit(OP_LOAD_CONST, self._add_const(None))
         self._emit(OP_RETURN, None)
 
-        return Code(name, self.instructions[:], self.consts[:], self.next_local, 0)
+        code = Code(name, self.instructions[:], self.consts[:], self.next_local, 0)
+        # Apply simple peephole optimizations
+        code = self._peephole_optimize(code)
+        # Cache the result
+        self._cache[ast_hash] = code
+        return code
 
     # -------------
     # Helpers
@@ -139,7 +156,27 @@ class Compiler:
         op, _ = self.instructions[idx]
         self.instructions[idx] = (op, target)
 
-    def _alloc_local(self, name):
+    def _peephole_optimize(self, code: Code) -> Code:
+        """Very simple peephole optimizer.
+        Currently removes redundant LOAD_CONST None followed by POP (no‑op).
+        Can be extended with constant folding, jump threading, etc.
+        """
+        optimized_insts: List[Tuple[int, Any]] = []
+        i = 0
+        while i < len(code.instructions):
+            op, arg = code.instructions[i]
+            # Remove pattern: LOAD_CONST (None) ; POP
+            if op == OP_LOAD_CONST and arg == self._add_const(None):
+                # look ahead
+                if i + 1 < len(code.instructions) and code.instructions[i + 1][0] == OP_POP:
+                    # skip both
+                    i += 2
+                    continue
+            optimized_insts.append((op, arg))
+            i += 1
+        # Return new Code object preserving metadata
+        return Code(code.name, optimized_insts, code.consts, code.nlocals, code.argcount)
+
         if name in self.locals:
             return self.locals[name]
         idx = self.next_local

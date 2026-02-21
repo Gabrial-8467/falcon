@@ -21,6 +21,7 @@ from typing import List, Optional
 from .tokens import Token, TokenType
 from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
+    ListLiteral, TupleLiteral, DictLiteral, SetLiteral, ArrayLiteral, Subscript,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
     FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt
 )
@@ -241,8 +242,9 @@ class Parser:
     def _postfix(self) -> Expr:
         """
         Handle primary expressions and chained postfix operations:
-         - call: (...) 
+         - call: (...)
          - member: .ident
+         - subscript: [expr]
         """
         expr = self._primary()
         while True:
@@ -261,6 +263,12 @@ class Parser:
             if self._match(TokenType.DOT):
                 name_tok = self._consume(TokenType.IDENT, "Expect property name after '.'")
                 expr = Member(expr, name_tok.lexeme)
+                continue
+
+            if self._match(TokenType.LBRACKET):
+                index_expr = self._expression()
+                self._consume(TokenType.RBRACKET, "Expect ']' after subscript index")
+                expr = Subscript(expr, index_expr)
                 continue
 
             break
@@ -288,12 +296,54 @@ class Parser:
             return Literal(None)
         if self._match(TokenType.IDENT):
             return Variable(self._previous().lexeme)
-        if self._match(TokenType.LPAREN):
-            expr = self._expression()
-            self._consume(TokenType.RPAREN, "Expect ')' after expression")
-            return Grouping(expr)
+
 
         raise ParseError(f"Unexpected token: {self._peek()}")
+
+    # ---------------- literal parsing helpers ----------------
+    def _list_literal(self) -> Expr:
+        elements: List[Expr] = []
+        if not self._check(TokenType.RBRACKET):
+            while True:
+                elements.append(self._expression())
+                if not self._match(TokenType.COMMA):
+                    break
+        self._consume(TokenType.RBRACKET, "Expect ']' after list literal")
+        return ListLiteral(elements)
+
+    def _set_literal(self) -> Expr:
+        elements: List[Expr] = []
+        if not self._check(TokenType.RBRACE):
+            while True:
+                elements.append(self._expression())
+                if not self._match(TokenType.COMMA):
+                    break
+        self._consume(TokenType.RBRACE, "Expect '}' after set literal")
+        return SetLiteral(elements)
+
+    def _array_literal(self) -> Expr:
+        size_expr = self._expression()
+        self._consume(TokenType.RBRACKET, "Expect ']' after array size expression")
+        return ArrayLiteral(size_expr)
+
+    def _dict_literal(self) -> Expr:
+        entries: List[tuple] = []
+        if not self._check(TokenType.RBRACE):
+            while True:
+                # parse key
+                if self._match(TokenType.STRING):
+                    key_expr = Literal(self._previous().literal)
+                elif self._match(TokenType.IDENT):
+                    key_expr = Literal(self._previous().lexeme)
+                else:
+                    raise ParseError("Expected string or identifier as dict key")
+                self._consume(TokenType.COLON, "Expect ':' after dict key")
+                value_expr = self._expression()
+                entries.append((key_expr, value_expr))
+                if not self._match(TokenType.COMMA):
+                    break
+        self._consume(TokenType.RBRACE, "Expect '}' after dict literal")
+        return DictLiteral(entries)
 
     # ---------------- helpers ----------------
     def _parse_params(self) -> List[str]:

@@ -32,7 +32,8 @@ KEYWORDS = {
     "null": TokenType.NULL,
     "function": TokenType.FUNCTION,
     "return": TokenType.RETURN,
-    "break": TokenType.BREAK,
+    "set": TokenType.SET,
+    "array": TokenType.ARRAY,
 }
 
 
@@ -129,7 +130,7 @@ class Lexer:
             self._add_token(TokenType.SLASH)
             return
 
-        # declaration ':=' and method '::' handling
+        # declaration ':=' and method/operator handling (including ':' token)
         if c == ":":
             # ':=' declaration operator
             if self._match("="):
@@ -139,19 +140,21 @@ class Lexer:
             if self._match(":"):
                 self._add_token(TokenType.METHODCOLON)  # METHODCOLON for '::'
                 return
-            # single ':' is not used in current grammar; treat as error to avoid surprises
-            raise LexerError(f"Unexpected ':' at {self.lineno}:{self.col}")
+            # single ':' token (used for dict/object literals)
+            self._add_token(TokenType.COLON)
+            return
 
         # single-char tokens and simple two-char detection handled below
         single_map = {
-            "{": TokenType.LBRACE, "}": TokenType.RBRACE,
+            "[": TokenType.LBRACKET, "]": TokenType.RBRACKET,
             "(": TokenType.LPAREN, ")": TokenType.RPAREN,
             ";": TokenType.SEMI, ",": TokenType.COMMA,
             ".": TokenType.DOT, "+": TokenType.PLUS,
             "-": TokenType.MINUS, "*": TokenType.STAR,
             "%": TokenType.PERC, "!": TokenType.BANG,
             "<": TokenType.LT, ">": TokenType.GT,
-            "=": TokenType.EQ, "&": None, "|": None,
+            "=": TokenType.EQ,
+            "&": None, "|": None,
         }
 
         if c in single_map:

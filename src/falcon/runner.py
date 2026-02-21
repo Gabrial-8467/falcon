@@ -16,7 +16,8 @@ from typing import Any, Dict, List
 from .lexer import Lexer, LexerError
 from .parser import Parser, ParseError
 from .interpreter import Interpreter, InterpreterError
-from .compiler import Compiler
+from .compiler import Compiler, Code
+from typing import Any, Dict, List, Tuple
 from .vm import VM, VMRuntimeError
 from .builtins import BUILTINS
 
@@ -24,7 +25,9 @@ from .builtins import BUILTINS
 # --------------------------------------------
 # Helpers
 # --------------------------------------------
-def read_source(path: str) -> str:
+# module‑level cache for compiled code (path > (mtime, Code))
+_compile_cache: Dict[str, Tuple[float, Code]] = {}
+
     p = pathlib.Path(path)
     if not p.exists():
         raise FileNotFoundError(path)
@@ -75,83 +78,60 @@ def run_file(path: str) -> int:
     if not path.lower().endswith('.fn'):
         print(f"{path}: Error – only .fn files are supported.")
         return 1
-    if not path.lower().endswith('.fn'):
-        print(f"Error: Only .fn Falcon source files are supported (got '{path}').")
-        return 1
+    # Read source
     src = read_source(path)
+    src_mtime = pathlib.Path(path).stat().st_mtime
 
-    # Per-stage timers
-    lex_time = parse_time = compile_time = vm_time = interp_time = None
+    # Check compile cache
+    cache_entry = _compile_cache.get(path)
+    if cache_entry and cache_entry[0] == src_mtime:
+        code_obj = cache_entry[1]
+        compile_time = 0.0
+        cached = True
+    else:
+        cached = False
 
+    # Timers
+    lex_time = parse_time = compile_time if not cached else 0.0
+    vm_time = interp_time = None
     total_start = time.perf_counter()
 
-    # ------------------ LEX ------------------
-    try:
+    if not cached:
+        # Lexing
         t0 = time.perf_counter()
         tokens = Lexer(src).lex()
-        t1 = time.perf_counter()
-        lex_time = t1 - t0
-    except LexerError as le:
-        print(f"{path}: Lexer error: {le}")
-        return 2
-
-    # ------------------ PARSE ------------------
-    try:
+        lex_time = time.perf_counter() - t0
+        # Parsing
         t0 = time.perf_counter()
         ast = Parser(tokens).parse()
-        t1 = time.perf_counter()
-        parse_time = t1 - t0
-    except ParseError as pe:
-        print(f"{path}: Parse error: {pe}")
-        return 2
-
-    # ------------------ COMPILE ------------------
-    compiler = Compiler()
-    code_obj = None
-    try:
+        parse_time = time.perf_counter() - t0
+        # Compilation
+        compiler = Compiler()
         t0 = time.perf_counter()
-        if hasattr(compiler, "compile_module"):
-            code_obj = compiler.compile_module(ast, name=path)
-        elif hasattr(compiler, "compile"):
-            code_obj = compiler.compile(ast, name=path)
-        elif hasattr(compiler, "compile_all"):
-            code_obj = compiler.compile_all(ast, name=path)
-        else:
-            raise RuntimeError("Compiler does not expose compile/compile_module/compile_all")
-        t1 = time.perf_counter()
-        compile_time = t1 - t0
-    except Exception as ce:
-        t1 = time.perf_counter()
-        compile_time = t1 - t0
-        print(f"{path}: Compile error (compiler raised): {ce}")
-        code_obj = None
+        code_obj = compiler.compile_module(ast, name=path)
+        compile_time = time.perf_counter() - t0
+        # Store in cache
+        _compile_cache[path] = (src_mtime, code_obj)
+    else:
+        # Need AST for interpreter fallback – re‑parse without timing
+        tokens = Lexer(src).lex()
+        ast = Parser(tokens).parse()
 
-    # --------------------------------------------
     # Prepare VM
-    # --------------------------------------------
     vm = VM(verbose=False)
-
     for k, v in BUILTINS.items():
         vm.globals.setdefault(k, v)
 
-    # --------------------------------------------
-    # RUN ON VM IF POSSIBLE
-    # --------------------------------------------
+    # Try running on VM
     if code_obj is not None:
         try:
             pretty_print_compiled(code_obj)
             print(f"[VM] Running compiled code for {path} ...")
-
             t0 = time.perf_counter()
             result = vm.run_code(code_obj)
-            t1 = time.perf_counter()
-            vm_time = t1 - t0
-
-            print(f"[VM] Completed. Result: {result!r}")
-
+            vm_time = time.perf_counter() - t0
             total = time.perf_counter() - total_start
-
-            # Summary
+            print(f"[VM] Completed. Result: {result!r}")
             print("\nTiming summary:")
             print(f"  lex      : {lex_time:.6f}s")
             print(f"  parse    : {parse_time:.6f}s")
@@ -160,35 +140,26 @@ def run_file(path: str) -> int:
             print(f"  interp   : N/A")
             print(f"  total    : {total:.6f}s")
             return 0
-
         except VMRuntimeError as ve:
             print(f"[VM ERROR] {ve}")
             traceback.print_exc(limit=1)
             dump_vm_debug(vm)
             print("Falling back to interpreter...")
-
         except Exception as e:
             print(f"[VM ERROR] Unexpected exception: {e}")
             traceback.print_exc(limit=1)
             dump_vm_debug(vm)
             print("Falling back to interpreter...")
 
-    # --------------------------------------------
-    # INTERPRETER FALLBACK
-    # --------------------------------------------
+    # Interpreter fallback
     try:
         interp = Interpreter()
         print("[Interpreter] Running AST interpreter...")
-
         t0 = time.perf_counter()
         interp.interpret(ast)
-        t1 = time.perf_counter()
-        interp_time = t1 - t0
-
-        print("[Interpreter] Completed.")
-
+        interp_time = time.perf_counter() - t0
         total = time.perf_counter() - total_start
-
+        print("[Interpreter] Completed.")
         print("\nTiming summary:")
         print(f"  lex      : {lex_time:.6f}s")
         print(f"  parse    : {parse_time:.6f}s")
@@ -197,16 +168,15 @@ def run_file(path: str) -> int:
         print(f"  interp   : {interp_time:.6f}s")
         print(f"  total    : {total:.6f}s")
         return 0
-
     except InterpreterError as ie:
         print(f"{path}: Runtime error: {ie}")
         traceback.print_exc()
         return 3
-
     except Exception as e:
         print(f"{path}: Unexpected runtime error: {e}")
         traceback.print_exc()
         return 3
+
 
 
 # --------------------------------------------

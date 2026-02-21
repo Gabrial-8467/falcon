@@ -58,7 +58,28 @@ show(next());  # 1
 show(next());  # 2
 ```
 
-### ✔ Falcon Loop System  
+### ✔ Collection Literals
+```
+# List
+var lst := [1, 2, 3];
+# Tuple
+var tpl := (1, 2, 3);
+# Dictionary / Object
+var obj := { name: "Falcon", version: 0.3 };
+# Set
+var s := set{1, 2, 3};
+# Array (fixed size)
+var arr := array[5];
+# Subscript access
+show(lst[0]);
+show(obj.name);
+```
+
+### ✔ Compiler Caching & Peephole Optimizer
+- Bytecode for unchanged source files is cached in‑memory, avoiding repeated lex/parse/compile work.
+- Simple peephole pass removes no‑op instruction sequences (e.g., `LOAD_CONST None ; POP`).
+- Ready for future parallel compilation extensions.
+  
 ```
 for var i := 1 to 5 step 1 {
     show(i);

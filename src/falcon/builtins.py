@@ -181,8 +181,60 @@ class Promise:
         return p
 
 # --------------------
-# Other small builtins
+# Runtime collection wrapper classes
 # --------------------
+class RuntimeList(list):
+    def length(self) -> int:
+        return len(self)
+
+class RuntimeTuple(tuple):
+    def length(self) -> int:
+        return len(self)
+
+class RuntimeDict(dict):
+    def get(self, key, default=None):
+        return super().get(key, default)
+    def set(self, key, value):
+        self[key] = value
+    def keys(self):
+        return list(super().keys())
+    def values(self):
+        return list(super().values())
+
+class RuntimeSet(set):
+    def add(self, value):
+        super().add(value)
+    def remove(self, value):
+        super().remove(value)
+    def contains(self, value):
+        return value in self
+
+class FixedArray:
+    def __init__(self, size):
+        self._size = int(size)
+        self._data = [None] * self._size
+    def __getitem__(self, idx):
+        if not isinstance(idx, int):
+            raise TypeError("Array index must be integer")
+        if idx < 0:
+            idx = self._size + idx
+        if idx < 0 or idx >= self._size:
+            raise IndexError("Array index out of bounds")
+        return self._data[idx]
+    def __setitem__(self, idx, val):
+        if not isinstance(idx, int):
+            raise TypeError("Array index must be integer")
+        if idx < 0:
+            idx = self._size + idx
+        if idx < 0 or idx >= self._size:
+            raise IndexError("Array index out of bounds")
+        self._data[idx] = val
+    def length(self) -> int:
+        return self._size
+    def __repr__(self):
+        return f"array[{self._size}]" + repr(self._data)
+
+
 def len_builtin(obj: Any) -> int:
     if obj is None:
         raise TypeError("len(null) is not supported")
@@ -230,7 +282,11 @@ def exit_builtin(code: int = 0) -> None:
 # Export builtins mapping (used by VM)
 # --------------------
 BUILTINS: Dict[str, Callable[..., Any]] = {
-    "show": show,
+    "list": lambda *a: RuntimeList(a),
+    "tuple": lambda *a: RuntimeTuple(a),
+    "dict": lambda **kw: RuntimeDict(kw),
+    "set": lambda *a: RuntimeSet(a),
+    "array": lambda size: FixedArray(size),
     "len": len_builtin,
     "range": range_builtin,
     "typeOf": typeOf,
@@ -240,7 +296,11 @@ BUILTINS: Dict[str, Callable[..., Any]] = {
     "writeFile": writeFile,
     "toString": toString,
     "Promise": Promise,
-    "console": _Console(),
+    "list": lambda *a: RuntimeList(a),
+    "tuple": lambda *a: RuntimeTuple(a),
+    "dict": lambda **kw: RuntimeDict(kw),
+    "set": lambda *a: RuntimeSet(a),
+    "array": lambda size: FixedArray(size),
 }
 
 # Backwards-compatible aliases (if VM or other code expects these names)

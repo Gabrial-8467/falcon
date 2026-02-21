@@ -4,6 +4,11 @@ from dataclasses import dataclass
 
 class TokenType(Enum):
     # --- Single-character tokens ---
+    COLON = auto()       # :
+    LBRACKET = auto()    # [
+    RBRACKET = auto()    # ]
+    SET = auto()           # set keyword
+    ARRAY = auto()         # array keyword
     LBRACE = auto()    # {
     RBRACE = auto()    # }
     LPAREN = auto()    # (
@@ -55,8 +60,6 @@ class TokenType(Enum):
     FUNCTION = auto()
     RETURN = auto()
     BREAK = auto()
-    # --- End of File ---
-    EOF = auto()
 
 
 @dataclass

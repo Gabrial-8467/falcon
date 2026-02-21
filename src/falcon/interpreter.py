@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any, List, Optional, Callable
 from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
+    ListLiteral, TupleLiteral, DictLiteral, SetLiteral, ArrayLiteral, Subscript,
     Stmt, ExprStmt, LetStmt, BlockStmt, IfStmt, WhileStmt,
     FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt,
 )
@@ -259,6 +260,37 @@ class Function:
         if isinstance(expr, Grouping):
             return self._eval(expr.expression, env)
 
+        # New collection literals
+        if isinstance(expr, ListLiteral):
+            return [self._eval(e, env) for e in expr.elements]
+        if isinstance(expr, TupleLiteral):
+            return tuple(self._eval(e, env) for e in expr.elements)
+        if isinstance(expr, DictLiteral):
+            d = {}
+            for k_expr, v_expr in expr.entries:
+                # key_expr is a Literal containing string name
+                key = self._eval(k_expr, env)
+                val = self._eval(v_expr, env)
+                d[key] = val
+            return d
+        if isinstance(expr, SetLiteral):
+            return set(self._eval(e, env) for e in expr.elements)
+        if isinstance(expr, ArrayLiteral):
+            size = self._eval(expr.size_expr, env)
+            # Use FixedArray defined in builtins (import later)
+            from .builtins import FixedArray
+            return FixedArray(int(size))
+        if isinstance(expr, Subscript):
+            base_val = self._eval(expr.base, env)
+            index = self._eval(expr.index, env)
+            try:
+                return base_val[index]
+            except Exception as e:
+                raise InterpreterError(f"Subscript error: {e}") from e
+
+        if isinstance(expr, Grouping):
+            return self._eval(expr.expression, env)
+
         if isinstance(expr, Unary):
             val = self._eval(expr.operand, env)
             if expr.op == "!":
@@ -269,8 +301,42 @@ class Function:
                 return -val
             raise InterpreterError(f"Unsupported unary operator: {expr.op}")
 
-        if isinstance(expr, Binary):
-            if expr.op == "&&":
+        if isinstance(expr, ListLiteral):
+            elements = [self._eval(e, env) for e in expr.elements]
+            return RuntimeList(elements)
+        if isinstance(expr, TupleLiteral):
+            elements = [self._eval(e, env) for e in expr.elements]
+            return RuntimeTuple(tuple(elements))
+        if isinstance(expr, DictLiteral):
+            d = {}
+            for key_expr, val_expr in expr.entries:
+                key = self._eval(key_expr, env)
+                if not isinstance(key, (int, float, str, bool, tuple)):
+                    raise InterpreterError("Keys must be immutable and hashable")
+                d[key] = self._eval(val_expr, env)
+            return RuntimeDict(d)
+        if isinstance(expr, SetLiteral):
+            elements = {self._eval(e, env) for e in expr.elements}
+            return RuntimeSet(elements)
+        if isinstance(expr, ArrayLiteral):
+            size = self._eval(expr.size_expr, env)
+            return FixedArray(size)
+        if isinstance(expr, Subscript):
+            base = self._eval(expr.base, env)
+            index = self._eval(expr.index, env)
+            try:
+                return base[index]
+            except Exception as e:
+                raise InterpreterError(str(e))
+        if isinstance(expr, Member):
+            base_val = self._eval(expr.base, env)
+            if isinstance(base_val, RuntimeDict):
+                return base_val.get(expr.name)
+            try:
+                return getattr(base_val, expr.name)
+            except AttributeError:
+                raise InterpreterError(f"Object has no attribute '{expr.name}'")
+
                 left = self._eval(expr.left, env)
                 if not self._is_truthy(left):
                     return left
