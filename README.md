@@ -1,3 +1,7 @@
+<p align="center">
+<img src="assets\fullfnlogo.png" alt="Falcon Logo" width="200">
+</p>
+
 ```
 ███████╗ █████╗ ██╗      ██████╗ ██████╗ ███╗   ██╗
 ██╔════╝██╔══██╗██║     ██╔════╝██╔═══██╗████╗  ██║
@@ -191,7 +195,7 @@ Hello, Falcon!
 
 <!-- # 📂 Project Structure  
 ```
-falcon-prototype/
+falcon/
 ├── README.md                 # Main documentation and getting started guide
 ├── CHARTER.md               # Language design principles and goals
 ├── LICENSE                  # Apache License 2.0
