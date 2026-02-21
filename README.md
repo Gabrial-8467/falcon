@@ -1,5 +1,5 @@
 <p align="center">
-<img src="assets\fullfnlogo.png" alt="Falcon Logo" width="200">
+<img src="assets\fullfnlogo.png" alt="Falcon Logo" width="500">
 </p>
 
 ```
