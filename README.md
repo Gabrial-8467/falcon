@@ -13,20 +13,20 @@
 Falcon is a **small, modern programming language** designed to be:
 
 - 🧠 **Easy to learn** (clean syntax, predictable semantics)  
-- ⚡ hybrid **VM + interpreter** execution model  
+- ⚡ **hybrid Compiler + VM + Interpreter** execution model  
 - 🧱 **Modular & extensible** (clean compiler architecture)  
 - 🦾 **Capable** (closures, loops, functions, expressions, built-ins)
 
 This repository contains the full Falcon **prototype implementation**, including:
 
-- Lexer  
-- Parser → AST  
-- Hybrid Interpreter  
-- Bytecode Compiler  
-- Stack-based Virtual Machine  
-- REPL  
-- Built-in functions  
-- Sample `.fn` programs  
+- **Lexer** - Tokenizes Falcon source code
+- **Parser → AST** - Builds abstract syntax tree from tokens  
+- **Bytecode Compiler** - Compiles AST to optimized bytecode
+- **Stack-based Virtual Machine** - Executes bytecode efficiently
+- **Hybrid Interpreter** - Handles dynamic features and closures
+- **REPL** - Interactive development environment
+- **Built-in functions** - Core runtime library
+- **Sample `.fn` programs** - Comprehensive examples  
 
 Falcon is actively evolving toward a **production-grade scripting language** with modules, async, optimized bytecode, and an ahead-of-time compiler.
 
