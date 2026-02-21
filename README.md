@@ -1,4 +1,4 @@
-<p align="center" style="margin: 0; background-color: #000;">
+<p align="center">
 <img src="assets\fullfnlogo.png" alt="Falcon Logo" width="500">
 </p>
 
