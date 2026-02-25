@@ -12,6 +12,10 @@ from .file_loader import load_file
 from .text_helpers import is_alpha, is_alnum
 
 __all__ = [
+    "regex_match",
+    "regex_search",
+    "regex_findall",
+
     "FalconError",
     "load_file",
     "is_alpha",
