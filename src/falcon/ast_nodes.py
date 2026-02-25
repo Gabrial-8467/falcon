@@ -150,7 +150,9 @@ class TypeAnnotation:
     name: str
     # Future: could hold more info (e.g., generic parameters)
 
-# ... existing imports above ...
+
+@dataclass
+class LetBlockStmt(Stmt):
     """
     Block‑scoped let declaration.
     name: variable name
@@ -163,7 +165,10 @@ class TypeAnnotation:
     is_const: bool = False
     type_ann: Optional[TypeAnnotation] = None
     block: "BlockStmt" = None
-    LetStmt = LetBlockStmt
+
+
+# Alias for backward compatibility
+LetStmt = LetBlockStmt
 
 
 # RESTORED — parser and interpreter require this
@@ -261,3 +266,92 @@ class ReturnStmt(Stmt):
     value: Optional[Expr] = None
     def __repr__(self) -> str:
         return f"ReturnStmt({self.value!r})"
+
+
+# ================================================================
+# Pattern Matching
+# ================================================================
+
+# Pattern nodes
+class Pattern:
+    """Base class for patterns."""
+    pass
+
+@dataclass
+class LiteralPattern(Pattern):
+    value: Any
+    def __repr__(self) -> str:
+        return f"LiteralPattern({self.value!r})"
+
+@dataclass
+class VariablePattern(Pattern):
+    name: str
+    def __repr__(self) -> str:
+        return f"VariablePattern({self.name})"
+
+@dataclass
+class TypePattern(Pattern):
+    type_expr: Expr
+    def __repr__(self) -> str:
+        return f"TypePattern({self.type_expr!r})"
+
+@dataclass
+class ListPattern(Pattern):
+    elements: List[Pattern]
+    def __repr__(self) -> str:
+        return f"ListPattern([{', '.join(repr(e) for e in self.elements)}])"
+
+@dataclass
+class TuplePattern(Pattern):
+    elements: List[Pattern]
+    def __repr__(self) -> str:
+        return f"TuplePattern([{', '.join(repr(e) for e in self.elements)}])"
+
+@dataclass
+class DictPattern(Pattern):
+    entries: List[tuple[str, Pattern]]
+    def __repr__(self) -> str:
+        return f"DictPattern({self.entries!r})"
+
+@dataclass
+class OrPattern(Pattern):
+    patterns: List[Pattern]
+    def __repr__(self) -> str:
+        return f"OrPattern({' | '.join(repr(p) for p in self.patterns)})"
+
+@dataclass
+class WildcardPattern(Pattern):
+    """_ pattern that matches anything"""
+    def __repr__(self) -> str:
+        return "WildcardPattern()"
+
+# Match expression and case statement
+@dataclass
+class CaseArm:
+    pattern: Pattern
+    guard: Optional[Expr]  # Optional guard condition
+    body: BlockStmt
+    
+    def __repr__(self) -> str:
+        guard_str = f" if {self.guard!r}" if self.guard else ""
+        return f"CaseArm({self.pattern!r}{guard_str}, {self.body!r})"
+
+@dataclass
+class MatchExpr(Expr):
+    """Match expression: match value { case pattern: expr; case pattern: expr; }"""
+    value: Expr
+    arms: List[CaseArm]
+    
+    def __repr__(self) -> str:
+        arms_str = "; ".join(repr(arm) for arm in self.arms)
+        return f"MatchExpr({self.value!r}, {{ {arms_str} }})"
+
+@dataclass
+class MatchStmt(Stmt):
+    """Match statement: match value { case pattern { statements } }"""
+    value: Expr
+    arms: List[CaseArm]
+    
+    def __repr__(self) -> str:
+        arms_str = "; ".join(repr(arm) for arm in self.arms)
+        return f"MatchStmt({self.value!r}, {{ {arms_str} }})"

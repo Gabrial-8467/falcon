@@ -60,6 +60,9 @@ class TokenType(Enum):
     FUNCTION = auto()
     RETURN = auto()
     BREAK = auto()
+    MATCH = auto()       # match
+    CASE = auto()       # case
+    GUARD = auto()      # if (guard in case)
 
 
 @dataclass

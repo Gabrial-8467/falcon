@@ -15,14 +15,9 @@ from __future__ import annotations
 from typing import Any, List, Callable, Dict
 import sys
 import pathlib
-<<<<<<< HEAD
+import json
 from .utils.pattern_match import match as regexMatch, search as regexSearch, findall as regexFindAll, match_dict as regexMatchDict, glob_match as globMatch
 from .utils.struct_match import match_pattern as matchPattern
-=======
-import json
-from .utils.pattern_match import match as regexMatch, search as regexSearch, findall as regexFindAll
-
->>>>>>> worktree-agent-ac3a1c25
 # --------------------
 # String conversion helpers
 # --------------------

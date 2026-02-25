@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """Utility module providing simple regex helpers for Falcon built‑ins.
 
 The functions accept a pattern string, a target string, and optional flag integer
@@ -8,7 +7,6 @@ error.
 """
 
 import re
-import fnmatch
 import fnmatch
 from typing import List, Optional, Any, Dict
 
@@ -28,70 +26,42 @@ def match(pattern: str, string: str, flags: int = 0) -> Optional[List[Any]]:
     """Perform ``re.match`` and return a list of captured groups.
 
     If the pattern does not match, ``None`` is returned. The full match (group 0)
-    is omitted – only the captured groups are returned, mirroring typical
-    regex‑helper semantics.
+    is included as the first element of the returned list.
     """
     regex = _compile(pattern, flags)
     m = regex.match(string)
     if not m:
         return None
-    # Return captured groups; if none, return empty list
-    return list(m.groups())
+    return [m.group(0)] + list(m.groups())
 
 
 def search(pattern: str, string: str, flags: int = 0) -> Optional[List[Any]]:
     """Perform ``re.search`` and return a list of captured groups.
 
-    Returns ``None`` when no match is found.
+    If the pattern does not match, ``None`` is returned. The full match (group 0)
+    is included as the first element of the returned list.
     """
     regex = _compile(pattern, flags)
     m = regex.search(string)
     if not m:
         return None
-    return list(m.groups())
+    return [m.group(0)] + list(m.groups())
 
 
-def findall(pattern: str, string: str, flags: int = 0) -> List[Any]:
-    """Return all non‑overlapping matches.
+def findall(pattern: str, string: str, flags: int = 0) -> List[List[Any]]:
+    """Perform ``re.findall`` and return a list of match groups.
 
-    If the pattern contains capturing groups, a list of tuples with the groups
-    is returned; otherwise a list of matching substrings.
+    Each match is represented as a list of its captured groups.
     """
     regex = _compile(pattern, flags)
-    return regex.findall(string)
-
-
-def match_dict(pattern: str, string: str, flags: int = 0) -> Optional[Dict[str, str]]:
-    """Return a dict of named capture groups.
-
-    If the pattern has no named groups, an empty dict is returned.
-    Returns ``None`` when the pattern does not match.
-    """
-    regex = _compile(pattern, flags)
-    m = regex.match(string)
-    if not m:
-        return None
-    return m.groupdict()
-
-
-def glob_match(pattern: str, string: str, flags: int = 0) -> bool:
-    """Match *string* against a shell‑style glob *pattern*.
-
-    Flags are accepted for signature compatibility but are ignored.
-    """
-    # Translate the glob to a regular expression; fnmatch.translate adds a trailing \Z(?ms)
-    regex_pat = fnmatch.translate(pattern)
-    # Compile with DOTALL so ** can span newlines if needed
-    regex = re.compile(regex_pat, re.DOTALL)
-    return bool(regex.fullmatch(string))
-
+    return [list(match) for match in regex.findall(string)]
 
 
 def match_dict(pattern: str, string: str, flags: int = 0) -> Optional[Dict[str, str]]:
     """Perform ``re.match`` and return a dict of named capture groups.
 
-    If the pattern contains no named groups, an empty dict is returned.
-    If the pattern does not match, ``None`` is returned.
+    If the pattern has no named groups, an empty dict is returned.
+    Returns ``None`` when the pattern does not match.
     """
     regex = _compile(pattern, flags)
     m = regex.match(string)
@@ -112,24 +82,3 @@ def glob_match(pattern: str, string: str, flags: int = 0) -> bool:
     # Compile with DOTALL so ``**`` can span newlines if needed
     regex = re.compile(regex_pat, re.DOTALL)
     return bool(regex.fullmatch(string))
-=======
-import re
-
-def match(pattern: str, string: str, flags: int = 0):
-    """Return a re.Match object if the pattern matches the start of the string, else None.
-    Mirrors Python's re.match.
-    """
-    return re.match(pattern, string, flags)
-
-def search(pattern: str, string: str, flags: int = 0):
-    """Return a re.Match object for the first occurrence of the pattern in the string, else None.
-    Mirrors Python's re.search.
-    """
-    return re.search(pattern, string, flags)
-
-def findall(pattern: str, string: str, flags: int = 0):
-    """Return a list of all non‑overlapping matches of the pattern in the string.
-    Mirrors Python's re.findall.
-    """
-    return re.findall(pattern, string, flags)
->>>>>>> worktree-agent-ac3a1c25

@@ -34,6 +34,9 @@ KEYWORDS = {
     "return": TokenType.RETURN,
     "set": TokenType.SET,
     "array": TokenType.ARRAY,
+    "match": TokenType.MATCH,
+    "case": TokenType.CASE,
+    "guard": TokenType.GUARD,
 }
 
 

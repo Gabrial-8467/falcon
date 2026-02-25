@@ -1,0 +1,122 @@
+// Pattern Matching Examples in Falcon
+// Demonstrates the new native pattern matching syntax
+
+// Basic match expression
+function describe_value(x) {
+    return match x {
+        case 0: "zero";
+        case 1: "one";
+        case _: "other";
+    };
+}
+
+show(describe_value(0));  // "zero"
+show(describe_value(1));  // "one" 
+show(describe_value(5));  // "other"
+
+// Match with variable binding
+function analyze_list(lst) {
+    return match lst {
+        case []: "empty list";
+        case [x]: "single element: " + x;
+        case [x, y]: "two elements: " + x + " and " + y;
+        case [x, y, z]: "three elements: " + x + ", " + y + ", " + z;
+        case _: "longer list";
+    };
+}
+
+show(analyze_list([]));                    // "empty list"
+show(analyze_list([42]));                  // "single element: 42"
+show(analyze_list([1, 2]));                // "two elements: 1 and 2"
+show(analyze_list([1, 2, 3]));             // "three elements: 1, 2, 3"
+show(analyze_list([1, 2, 3, 4]));         // "longer list"
+
+// Match with type patterns
+function type_info(x) {
+    return match x {
+        case int: "integer";
+        case str: "string";
+        case bool: "boolean";
+        case list: "list";
+        case _: "other type";
+    };
+}
+
+show(type_info(42));           // "integer"
+show(type_info("hello"));      // "string"
+show(type_info(true));         // "boolean"
+show(type_info([1, 2, 3]));    // "list"
+show(type_info({name: "test"})); // "other type"
+
+// Match statement with guard conditions
+function categorize_number(n) {
+    match n {
+        case x if x < 0: {
+            show("negative");
+        }
+        case x if x == 0: {
+            show("zero");
+        }
+        case x if x > 0 && x < 10: {
+            show("positive single digit");
+        }
+        case x if x >= 10: {
+            show("positive multi-digit");
+        }
+    }
+}
+
+show("Testing numbers:");
+categorize_number(-5);   // "negative"
+categorize_number(0);    // "zero"
+categorize_number(5);    // "positive single digit"
+categorize_number(15);   // "positive multi-digit"
+
+// Dictionary pattern matching
+function analyze_person(person) {
+    match person {
+        case {name: name, age: age} if age >= 18: {
+            show(name + " is an adult (" + age + " years old)");
+        }
+        case {name: name, age: age}: {
+            show(name + " is a minor (" + age + " years old)");
+        }
+        case _: {
+            show("invalid person object");
+        }
+    }
+}
+
+analyze_person({name: "Alice", age: 25});  // "Alice is an adult (25 years old)"
+analyze_person({name: "Bob", age: 16});    // "Bob is a minor (16 years old)"
+
+// OR pattern matching
+function classify_value(x) {
+    return match x {
+        case 0 | 1 | 2: "small number";
+        case "red" | "blue" | "green": "primary color";
+        case [x] | (x,): "single item container";
+        case _: "other";
+    };
+}
+
+show(classify_value(1));        // "small number"
+show(classify_value("red"));     // "primary color"
+show(classify_value([42]));      // "single item container"
+show(classify_value((42,)));     // "single item container"
+
+// Nested pattern matching
+function deep_match(data) {
+    return match data {
+        case [point] where point is {x: x, y: y}: {
+            "single point: (" + x + ", " + y + ")";
+        }
+        case [p1, p2] where p1 is {x: x1, y: y1} && p2 is {x: x2, y: y2}: {
+            "two points: (" + x1 + ", " + y1 + ") and (" + x2 + ", " + y2 + ")";
+        }
+        case _: "other structure";
+    };
+}
+
+// Note: This shows the concept - actual nested matching might need refinement
+show("Pattern matching demo complete!");

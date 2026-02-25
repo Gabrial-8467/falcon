@@ -23,7 +23,10 @@ from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     ListLiteral, TupleLiteral, DictLiteral, SetLiteral, ArrayLiteral, Subscript,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
-    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt
+    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt,
+    # Pattern matching nodes
+    Pattern, LiteralPattern, VariablePattern, TypePattern, ListPattern, TuplePattern,
+    DictPattern, OrPattern, WildcardPattern, CaseArm, MatchExpr, MatchStmt
 )
 from .precedence import PREC
 
@@ -121,6 +124,10 @@ class Parser:
             token = self._previous()
             self._optional_semicolon()
             return BreakStmt(token)
+
+        # match statement
+        if self._match(TokenType.MATCH):
+            return self._match_statement()
 
         # block
         if self._match(TokenType.LBRACE):
@@ -275,6 +282,10 @@ class Parser:
         return expr
 
     def _primary(self) -> Expr:
+        # match expression
+        if self._match(TokenType.MATCH):
+            return self._match_expression()
+        
         # function expression
         if self._match(TokenType.FUNCTION):
             name: Optional[str] = None
@@ -416,3 +427,143 @@ class Parser:
 
     def _previous(self) -> Token:
         return self.tokens[self.current - 1]
+
+    # ---------------- pattern matching ----------------
+    
+    def _match_statement(self) -> MatchStmt:
+        """Parse a match statement: match expr { case pattern { statements } ... }"""
+        value = self._expression()
+        self._consume(TokenType.LBRACE, "Expect '{' after match value")
+        
+        arms = []
+        while not self._check(TokenType.RBRACE) and not self._is_at_end():
+            self._consume(TokenType.CASE, "Expect 'case' in match statement")
+            pattern = self._parse_pattern()
+            
+            # Optional guard: if condition
+            guard = None
+            if self._match(TokenType.IF):
+                guard = self._expression()
+            
+            self._consume(TokenType.LBRACE, "Expect '{' after case pattern")
+            body_stmts = self._block()
+            self._consume(TokenType.RBRACE, "Expect '}' after case body")
+            
+            arms.append(CaseArm(pattern, guard, BlockStmt(body_stmts)))
+        
+        self._consume(TokenType.RBRACE, "Expect '}' after match statement")
+        return MatchStmt(value, arms)
+    
+    def _match_expression(self) -> MatchExpr:
+        """Parse a match expression: match expr { case pattern: expr; ... }"""
+        value = self._expression()
+        self._consume(TokenType.LBRACE, "Expect '{' after match value")
+        
+        arms = []
+        while not self._check(TokenType.RBRACE) and not self._is_at_end():
+            self._consume(TokenType.CASE, "Expect 'case' in match expression")
+            pattern = self._parse_pattern()
+            
+            # Optional guard: if condition
+            guard = None
+            if self._match(TokenType.IF):
+                guard = self._expression()
+            
+            self._consume(TokenType.COLON, "Expect ':' after case pattern")
+            expr = self._expression()
+            self._optional_semicolon()
+            
+            # Create a block with just the expression
+            arms.append(CaseArm(pattern, guard, BlockStmt([ExprStmt(expr)])))
+        
+        self._consume(TokenType.RBRACE, "Expect '}' after match expression")
+        return MatchExpr(value, arms)
+    
+    def _parse_pattern(self) -> Pattern:
+        """Parse a pattern for matching."""
+        # Handle OR patterns first: pattern | pattern | pattern
+        patterns = [self._parse_single_pattern()]
+        while self._match(TokenType.OROR):
+            patterns.append(self._parse_single_pattern())
+        
+        if len(patterns) == 1:
+            return patterns[0]
+        else:
+            return OrPattern(patterns)
+    
+    def _parse_single_pattern(self) -> Pattern:
+        """Parse a single pattern (no OR)."""
+        # Wildcard pattern: _
+        if self._check(TokenType.IDENT) and self._peek().lexeme == "_":
+            self._advance()
+            return WildcardPattern()
+        
+        # Literal patterns: numbers, strings, true, false, null
+        if self._match(TokenType.NUMBER):
+            return LiteralPattern(self._previous().literal)
+        if self._match(TokenType.STRING):
+            return LiteralPattern(self._previous().literal)
+        if self._match(TokenType.TRUE):
+            return LiteralPattern(True)
+        if self._match(TokenType.FALSE):
+            return LiteralPattern(False)
+        if self._match(TokenType.NULL):
+            return LiteralPattern(None)
+        
+        # List pattern: [pattern1, pattern2, ...]
+        if self._match(TokenType.LBRACKET):
+            elements = []
+            while not self._check(TokenType.RBRACKET) and not self._is_at_end():
+                elements.append(self._parse_pattern())
+                if not self._match(TokenType.COMMA):
+                    break
+            self._consume(TokenType.RBRACKET, "Expect ']' after list pattern")
+            return ListPattern(elements)
+        
+        # Tuple pattern: (pattern1, pattern2, ...)
+        if self._match(TokenType.LPAREN):
+            elements = []
+            while not self._check(TokenType.RPAREN) and not self._is_at_end():
+                elements.append(self._parse_pattern())
+                if not self._match(TokenType.COMMA):
+                    break
+            self._consume(TokenType.RPAREN, "Expect ')' after tuple pattern")
+            return TuplePattern(elements)
+        
+        # Dict pattern: {key1: pattern1, key2: pattern2, ...}
+        if self._match(TokenType.LBRACE):
+            entries = []
+            while not self._check(TokenType.RBRACE) and not self._is_at_end():
+                # Parse key (must be string or identifier)
+                if self._match(TokenType.STRING):
+                    key = self._previous().literal
+                elif self._match(TokenType.IDENT):
+                    key = self._previous().lexeme
+                else:
+                    raise ParseError("Expect string or identifier as dict pattern key")
+                
+                self._consume(TokenType.COLON, "Expect ':' after dict pattern key")
+                pattern = self._parse_pattern()
+                entries.append((key, pattern))
+                
+                if not self._match(TokenType.COMMA):
+                    break
+            self._consume(TokenType.RBRACE, "Expect '}' after dict pattern")
+            return DictPattern(entries)
+        
+        # Type pattern: int, str, etc. (identifiers that are types)
+        if self._check(TokenType.IDENT) and self._is_type_name(self._peek().lexeme):
+            type_name = self._advance().lexeme
+            return TypePattern(Variable(type_name))
+        
+        # Variable pattern: any other identifier
+        if self._match(TokenType.IDENT):
+            return VariablePattern(self._previous().lexeme)
+        
+        raise ParseError(f"Unexpected token in pattern: {self._peek()}")
+    
+    def _is_type_name(self, name: str) -> bool:
+        """Check if an identifier is likely a type name."""
+        # Simple heuristic: common type names
+        common_types = {"int", "str", "string", "float", "bool", "list", "tuple", "dict", "object"}
+        return name in common_types

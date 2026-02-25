@@ -16,9 +16,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # Simple in‑memory cache: key -> Code object
 _compile_cache: Dict[str, Code] = {}
 
+from .ast_nodes import (
     Stmt, Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member,
     FunctionExpr, Assign, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
-    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, ExprStmt, BreakStmt
+    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, ExprStmt, BreakStmt,
+    # Pattern matching nodes
+    MatchExpr, MatchStmt, CaseArm, Pattern, LiteralPattern, VariablePattern,
+    TypePattern, ListPattern, TuplePattern, DictPattern, OrPattern, WildcardPattern
 )
 
 # Module‑level bytecode cache for fast recompilation
@@ -67,6 +71,11 @@ OP_INC_LOCAL = 31
 OP_JUMP_IF_GE_LOCAL_IMM = 32
 OP_FAST_COUNT = 33
 
+# Pattern matching opcodes
+OP_MATCH = 34
+OP_PATTERN_BIND = 35
+OP_GUARD_JUMP = 36
+
 
 # -------------------------
 # Code object
@@ -104,6 +113,7 @@ class Compiler:
     # Simple in-memory cache for compiled modules (source hash -> Code)
     _cache: Dict[int, Code] = {}
 
+    def __init__(self, verbose=False):
         self.verbose = verbose
         self.instructions = []
         self.consts = []
@@ -368,6 +378,11 @@ class Compiler:
             self.loop_stack[-1]["breaks"].append(j)
             return
 
+        # ---------------- match statement
+        if isinstance(stmt, MatchStmt):
+            self._compile_match_stmt(stmt)
+            return
+
         raise CompileError("Unknown stmt")
 
     # =====================
@@ -481,7 +496,28 @@ class Compiler:
             self._emit(OP_CALL, len(expr.arguments))
             return
 
+        # ---- match expression
+        if isinstance(expr, MatchExpr):
+            self._compile_match_expr(expr)
+            return
+
         raise CompileError("Unknown expr")
+
+    # =====================
+    # PATTERN MATCHING
+    # =====================
+    
+    def _compile_match_stmt(self, stmt: MatchStmt):
+        """Compile a match statement."""
+        # For now, delegate to interpreter by not compiling to bytecode
+        # This is a complex feature that needs careful VM integration
+        pass
+    
+    def _compile_match_expr(self, expr: MatchExpr):
+        """Compile a match expression."""
+        # For now, delegate to interpreter by not compiling to bytecode
+        # This is a complex feature that needs careful VM integration
+        pass
 
 
 def compile_module_to_code(stmts, name="<module>", verbose=False):

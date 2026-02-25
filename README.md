@@ -32,7 +32,7 @@ This repository contains the full Falcon **prototype implementation**, including
 - **Stack-based Virtual Machine** - Executes bytecode efficiently
 - **Hybrid Interpreter** - Handles dynamic features and closures
 - **REPL** - Interactive development environment
-- **Built-in functions** - Core runtime library (including regexMatch, regexSearch, regexFindAll) (including `regexMatch`, `regexSearch`, `regexFindAll`)
+- **Built-in functions** - Core runtime library (including `show`, `console.log`, regex functions, Promise API)
 - **Sample `.fn` programs** - Comprehensive examples  
 
 Falcon is actively evolving toward a **production-grade scripting language** with modules, async, optimized bytecode, and an ahead-of-time compiler.
@@ -88,6 +88,40 @@ var arr := array[5];
 show(lst[0]);        // 1
 show(obj.name);      // "Falcon"
 show(obj["version"]); // 0.3
+```
+
+### ✔ Comparison Operations
+```falcon
+// Equality operators
+var a := 10;
+var b := 20;
+
+show(a == b);   // false (equal to)
+show(a != b);   // true  (not equal to)
+
+// Relational operators
+show(a < b);    // true  (less than)
+show(a <= b);   // true  (less than or equal to)
+show(a > b);    // false (greater than)
+show(a >= b);   // false (greater than or equal to)
+
+// In conditional statements
+if (a < b) {
+    show("a is less than b");
+} else if (a > b) {
+    show("a is greater than b");
+} else {
+    show("a equals b");
+}
+
+// In pattern matching guards
+function classify_number(n) {
+    return match n {
+        case x if x < 0: "negative";
+        case x if x == 0: "zero";
+        case x if x > 0: "positive";
+    };
+}
 ```
 
 ### ✔ High-Performance Compiler Pipeline
@@ -186,6 +220,12 @@ falcon> .quit
 python -m falcon.runner examples/hello.fn
 ```
 
+Or using the package entry point:
+
+```bash
+falcon examples/hello.fn
+```
+
 VM output example:
 
 ```
@@ -196,7 +236,8 @@ Hello, Falcon!
 
 ---
 
-<!-- # 📂 Project Structure  
+# 📂 Project Structure  
+
 ```
 falcon/
 ├── README.md                 # Main documentation and getting started guide
@@ -208,30 +249,24 @@ falcon/
 ├── src/                     # Source code directory
 │   ├── falcon/              # Main language package
 │   │   ├── __init__.py      # Package initialization and entry points
-│   │   ├── main.py          # CLI interface: runs files or starts REPL
-│   │   │
+│   │   ├── main.py          # Legacy CLI interface (fallback)
 │   │   ├── lexer.py         # Tokenizer: converts source text to tokens
 │   │   ├── tokens.py        # Token types and Token class definitions
-│   │   │
 │   │   ├── parser.py        # Parser: builds AST from token stream
 │   │   ├── ast_nodes.py     # AST node classes for language constructs
 │   │   ├── precedence.py    # Operator precedence table for parsing
-│   │   │
 │   │   ├── vm.py            # Virtual Machine: executes bytecode
 │   │   ├── interpreter.py   # AST interpreter: handles dynamic features
 │   │   ├── env.py          # Environment: variable scopes and bindings
 │   │   ├── builtins.py      # Built-in functions and runtime utilities
-│   │   │
 │   │   ├── compiler.py      # Compiler: converts AST to bytecode
 │   │   ├── repl.py          # REPL: interactive development environment
 │   │   ├── runner.py        # File runner: executes .fn programs
-│   │   │
 │   │   └── utils/          # Utility modules
 │   │       ├── __init__.py
 │   │       ├── errors.py      # Custom exception classes
 │   │       ├── file_loader.py # File I/O utilities
 │   │       └── text_helpers.py # Text processing helpers
-│   │
 │   └── tests/               # Test suite
 │       ├── test_lexer.py      # Lexer unit tests
 │       ├── test_parser.py     # Parser unit tests
@@ -248,16 +283,14 @@ falcon/
 │   ├── factorial.fn       # Recursion example
 │   ├── closure.fn         # Closure demonstration
 │   ├── loop.fn           # Loop constructs
+│   ├── pattern_matching.fn # Advanced pattern matching examples
 │   └── async_stub.fn      # Promise API (synchronous stub)
 │
-├── docs/                   # Documentation files
-│   ├── quickstart.md      # Quick getting started guide
-│   ├── syntax.md         # Language syntax reference
-│   └── roadmap.md        # Development roadmap and plans
-│
-└── tools/                  # Development and utility tools
-    └── run_example.py   # Script to run example programs
-``` -->
+├── assets/                 # Project assets (logos, images)
+├── tools/                  # Development and utility tools
+│   └── run_example.py   # Script to run example programs
+└── myenv/                  # Virtual environment (gitignored)
+```
 
 ---
 
@@ -546,9 +579,9 @@ show("Promise scheduled.");
 - [x] **Comparison operations** (==, !=, <, <=, >, >=)
 - [x] **Logical operations** (&&, ||, !)
 - [x] **Assignment operations** (=, :=)
+- [x] **Pattern matching** (native syntax with variable binding, guards, OR patterns)
 
 ### 📋 Planned Features  
-- [ ] **Pattern matching**
 - [ ] **Type annotations**
 - [ ] **Async / await** (stub implemented)
 - [ ] **Modules & imports**

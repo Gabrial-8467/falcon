@@ -20,6 +20,9 @@ from .ast_nodes import (
     ListLiteral, TupleLiteral, DictLiteral, SetLiteral, ArrayLiteral, Subscript,
     Stmt, ExprStmt, LetStmt, BlockStmt, IfStmt, WhileStmt,
     FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt,
+    # Pattern matching nodes
+    Pattern, LiteralPattern, VariablePattern, TypePattern, ListPattern, TuplePattern,
+    DictPattern, OrPattern, WildcardPattern, CaseArm, MatchExpr, MatchStmt
 )
 from .env import Environment
 from .builtins import BUILTINS, Promise
@@ -72,6 +75,7 @@ class Function:
         return None
 
 
+class Interpreter:
     def __init__(self):
         self.globals = Environment()
         for name, fn in BUILTINS.items():
@@ -232,6 +236,12 @@ class Function:
         if isinstance(stmt, ReturnStmt):
             val = self._eval(stmt.value, env) if stmt.value is not None else None
             raise _ReturnSignal(val)
+
+        # ---------------- MatchStmt ----------------
+        if isinstance(stmt, MatchStmt):
+            value = self._eval(stmt.value, env)
+            self._execute_match(value, stmt.arms, env)
+            return
 
         raise InterpreterError(f"Unknown statement type: {type(stmt).__name__}")
     
@@ -455,6 +465,11 @@ class Function:
 
             raise InterpreterError("Attempted to call a non-callable value")
 
+        # ---------------- MatchExpr ----------------
+        if isinstance(expr, MatchExpr):
+            value = self._eval(expr.value, env)
+            return self._evaluate_match(value, expr.arms, env)
+
         raise InterpreterError(f"Unsupported expression type: {type(expr).__name__}")
 
     # ---------------- helpers ----------------
@@ -529,4 +544,140 @@ class Function:
                 self._execute(stmt, local)
         except _ReturnSignal as rs:
             return rs.value
+        return None
+
+    # ---------------- pattern matching ----------------
+    
+    def _execute_match(self, value: Any, arms: List[CaseArm], env: Environment) -> None:
+        """Execute a match statement, finding and executing the first matching arm."""
+        for arm in arms:
+            match_result = self._match_pattern(value, arm.pattern, env)
+            if match_result is not None:
+                # Check guard condition if present
+                if arm.guard is not None:
+                    guard_result = self._eval(arm.guard, env)
+                    if not self._is_truthy(guard_result):
+                        continue
+                
+                # Execute the arm body in the environment with pattern variables bound
+                self._execute(arm.body, env)
+                return
+        
+        # No pattern matched - this could be an error or just no-op
+        # For now, make it a no-op (could add exhaustive checking later)
+        pass
+    
+    def _evaluate_match(self, value: Any, arms: List[CaseArm], env: Environment) -> Any:
+        """Evaluate a match expression, returning the value from the first matching arm."""
+        for arm in arms:
+            match_result = self._match_pattern(value, arm.pattern, env)
+            if match_result is not None:
+                # Check guard condition if present
+                if arm.guard is not None:
+                    guard_result = self._eval(arm.guard, env)
+                    if not self._is_truthy(guard_result):
+                        continue
+                
+                # Execute the arm body and return the result of the last expression
+                result = None
+                for stmt in arm.body.body:
+                    if isinstance(stmt, ExprStmt):
+                        result = self._eval(stmt.expr, env)
+                    else:
+                        self._execute(stmt, env)
+                return result
+        
+        # No pattern matched - return None (could raise error instead)
+        return None
+    
+    def _match_pattern(self, value: Any, pattern: Pattern, env: Environment) -> Optional[Environment]:
+        """
+        Match a value against a pattern.
+        Returns a new environment with pattern variables bound if match succeeds,
+        None if match fails.
+        """
+        if isinstance(pattern, WildcardPattern):
+            return env  # Always matches, no bindings
+        
+        if isinstance(pattern, LiteralPattern):
+            return env if value == pattern.value else None
+        
+        if isinstance(pattern, VariablePattern):
+            # Bind the variable to the value
+            env.define(pattern.name, value)
+            return env
+        
+        if isinstance(pattern, TypePattern):
+            # Type pattern - check if value is instance of the type
+            type_name = pattern.type_expr.name if isinstance(pattern.type_expr, Variable) else None
+            if type_name == "int" and isinstance(value, int):
+                return env
+            elif type_name in ("str", "string") and isinstance(value, str):
+                return env
+            elif type_name == "float" and isinstance(value, (int, float)):
+                return env
+            elif type_name == "bool" and isinstance(value, bool):
+                return env
+            elif type_name == "list" and isinstance(value, list):
+                return env
+            elif type_name == "tuple" and isinstance(value, tuple):
+                return env
+            elif type_name == "dict" and isinstance(value, dict):
+                return env
+            else:
+                return None
+        
+        if isinstance(pattern, ListPattern):
+            if not isinstance(value, list):
+                return None
+            if len(value) != len(pattern.elements):
+                return None
+            
+            # Create a new environment for this pattern match
+            match_env = Environment(env)
+            for item, elem_pattern in zip(value, pattern.elements):
+                sub_result = self._match_pattern(item, elem_pattern, match_env)
+                if sub_result is None:
+                    return None
+            return match_env
+        
+        if isinstance(pattern, TuplePattern):
+            if not isinstance(value, (list, tuple)):
+                return None
+            if len(value) != len(pattern.elements):
+                return None
+            
+            # Create a new environment for this pattern match
+            match_env = Environment(env)
+            for item, elem_pattern in zip(value, pattern.elements):
+                sub_result = self._match_pattern(item, elem_pattern, match_env)
+                if sub_result is None:
+                    return None
+            return match_env
+        
+        if isinstance(pattern, DictPattern):
+            if not isinstance(value, dict):
+                return None
+            
+            # Check that all required keys are present
+            for key, _ in pattern.entries:
+                if key not in value:
+                    return None
+            
+            # Create a new environment for this pattern match
+            match_env = Environment(env)
+            for key, elem_pattern in pattern.entries:
+                sub_result = self._match_pattern(value[key], elem_pattern, match_env)
+                if sub_result is None:
+                    return None
+            return match_env
+        
+        if isinstance(pattern, OrPattern):
+            # Try each pattern in order, use first that matches
+            for sub_pattern in pattern.patterns:
+                result = self._match_pattern(value, sub_pattern, env)
+                if result is not None:
+                    return result
+            return None
+        
         return None

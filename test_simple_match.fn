@@ -1,0 +1,10 @@
+// Simple pattern matching test
+function test_match(x) {
+    return match x {
+        case 0: "zero";
+        case _: "other";
+    };
+}
+
+show(test_match(0));
+show(test_match(1));
