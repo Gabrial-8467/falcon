@@ -28,10 +28,13 @@ from .builtins import BUILTINS
 # module‑level cache for compiled code (path > (mtime, Code))
 _compile_cache: Dict[str, Tuple[float, Code]] = {}
 
+def read_source(path: str) -> str:
+    """Read source file text, ensuring .fn extension is handled by caller."""
     p = pathlib.Path(path)
     if not p.exists():
         raise FileNotFoundError(path)
     return p.read_text(encoding="utf-8")
+
 
 
 def pretty_print_compiled(code):

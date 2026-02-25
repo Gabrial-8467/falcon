@@ -15,7 +15,9 @@ from __future__ import annotations
 from typing import Any, List, Callable, Dict
 import sys
 import pathlib
-import json
+from .utils.pattern_match import match as regexMatch, search as regexSearch, findall as regexFindAll
+
+from .utils.pattern_match import match as regexMatch, search as regexSearch, findall as regexFindAll
 
 # --------------------
 # String conversion helpers
@@ -295,7 +297,14 @@ BUILTINS: Dict[str, Callable[..., Any]] = {
     "readFile": readFile,
     "writeFile": writeFile,
     "toString": toString,
-    "Promise": Promise,
+    "regexMatch": regexMatch,
+    "regexSearch": regexSearch,
+    "regexFindAll": regexFindAll,
+
+    "regexMatch": regexMatch,
+    "regexSearch": regexSearch,
+    "regexFindAll": regexFindAll,
+
     "list": lambda *a: RuntimeList(a),
     "tuple": lambda *a: RuntimeTuple(a),
     "dict": lambda **kw: RuntimeDict(kw),

@@ -32,7 +32,7 @@ This repository contains the full Falcon **prototype implementation**, including
 - **Stack-based Virtual Machine** - Executes bytecode efficiently
 - **Hybrid Interpreter** - Handles dynamic features and closures
 - **REPL** - Interactive development environment
-- **Built-in functions** - Core runtime library
+- **Built-in functions** - Core runtime library (including regexMatch, regexSearch, regexFindAll) (including `regexMatch`, `regexSearch`, `regexFindAll`)
 - **Sample `.fn` programs** - Comprehensive examples  
 
 Falcon is actively evolving toward a **production-grade scripting language** with modules, async, optimized bytecode, and an ahead-of-time compiler.
