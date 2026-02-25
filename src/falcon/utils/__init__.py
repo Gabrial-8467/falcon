@@ -7,9 +7,11 @@ This package contains:
 - text_helpers.py → small text/char utilities for lexer & parser
 """
 
-from .errors import FalconError
-from .file_loader import load_file
 from .text_helpers import is_alpha, is_alnum
+from .text_helpers import is_alpha, is_alnum
+from .file_loader import load_file
+from .pattern_match import match, search, findall
+
 
 __all__ = [
     "regex_match",
@@ -20,4 +22,7 @@ __all__ = [
     "load_file",
     "is_alpha",
     "is_alnum",
+    "match",
+    "search",
+    "findall",
 ]
