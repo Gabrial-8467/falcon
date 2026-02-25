@@ -7,6 +7,13 @@ This package contains:
 - text_helpers.py → small text/char utilities for lexer & parser
 """
 
+<<<<<<< HEAD
+=======
+from .errors import FalconError
+from .pattern_match import match, search, findall
+from .pattern_match import match, search, findall
+from .file_loader import load_file
+>>>>>>> worktree-agent-ac3a1c25
 from .text_helpers import is_alpha, is_alnum
 from .text_helpers import is_alpha, is_alnum
 from .file_loader import load_file
