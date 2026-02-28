@@ -274,6 +274,22 @@ class ReturnStmt(Stmt):
         return f"ReturnStmt({self.value!r})"
 
 
+@dataclass
+class ThrowStmt(Stmt):
+    value: Expr
+    def __repr__(self) -> str:
+        return f"ThrowStmt({self.value!r})"
+
+
+@dataclass
+class TryCatchStmt(Stmt):
+    try_block: BlockStmt
+    catch_name: str
+    catch_block: BlockStmt
+    def __repr__(self) -> str:
+        return f"TryCatchStmt(try={self.try_block!r}, catch {self.catch_name} => {self.catch_block!r})"
+
+
 # ================================================================
 # Pattern Matching
 # ================================================================

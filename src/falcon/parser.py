@@ -23,7 +23,7 @@ from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     ListLiteral, TupleLiteral, DictLiteral, SetLiteral, ArrayLiteral, Subscript,
     Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt, TypeAnnotation,
-    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt,
+    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt, ThrowStmt, TryCatchStmt,
     # Pattern matching nodes
     Pattern, LiteralPattern, VariablePattern, TypePattern, ListPattern, TuplePattern,
     DictPattern, OrPattern, WildcardPattern, CaseArm, MatchExpr, MatchStmt
@@ -147,6 +147,16 @@ class Parser:
             self._optional_semicolon()
             return BreakStmt(token)
 
+        # throw
+        if self._match(TokenType.THROW):
+            value = self._expression()
+            self._optional_semicolon()
+            return ThrowStmt(value)
+
+        # try/catch
+        if self._match(TokenType.TRY):
+            return self._try_catch_statement()
+
         # match statement
         if self._match(TokenType.MATCH):
             return self._match_statement()
@@ -176,6 +186,15 @@ class Parser:
         self._consume(TokenType.RPAREN, "Expect ')' after while condition")
         body = self._block_or_statement()
         return WhileStmt(cond, body)
+
+    def _try_catch_statement(self) -> Stmt:
+        try_block = self._parse_block()
+        self._consume(TokenType.CATCH, "Expect 'catch' after try block")
+        self._consume(TokenType.LPAREN, "Expect '(' after 'catch'")
+        catch_name = self._consume(TokenType.IDENT, "Expect identifier in catch clause").lexeme
+        self._consume(TokenType.RPAREN, "Expect ')' after catch identifier")
+        catch_block = self._parse_block()
+        return TryCatchStmt(try_block, catch_name, catch_block)
 
     def _for_statement(self) -> Stmt:
         """

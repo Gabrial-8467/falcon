@@ -286,6 +286,7 @@ falcon/
 │   ├── loop.fn           # Loop constructs
 │   ├── pattern_matching.fn # Advanced pattern matching examples
 │   ├── match_guards.fn    # Pattern matching with guards and dict destructuring
+│   ├── error_handling.fn  # Custom try/catch/throw error handling
 │   └── async_stub.fn      # Promise API (synchronous stub)
 │
 ├── assets/                 # Project assets (logos, images)
@@ -574,6 +575,23 @@ show(classifyUser({ role: "guest" }));
 show(classifyUser({ foo: "bar" }));
 ```
 
+### **error_handling.fn** - Custom try/catch/throw
+```falcon
+function safeDivide(a, b) {
+    if (b == 0) {
+        throw "division by zero";
+    }
+    return a / b;
+}
+
+try {
+    show("10 / 2 =", safeDivide(10, 2));
+    show("10 / 0 =", safeDivide(10, 0));
+} catch (err) {
+    show("Caught error:", err);
+}
+```
+
 ### **async_stub.fn** - Promise API (Synchronous)
 ```falcon
 show("Starting async stub...");
@@ -626,7 +644,7 @@ show("Promise scheduled.");
 ### 📋 Planned Features  
 - [ ] **Async / await** (stub implemented)
 - [ ] **Modules & imports**
-- [ ] **Error handling** (try/catch)
+- [x] **Error handling** (try/catch/throw)
 - [ ] **Classes & objects**
 - [ ] **Generators**  
 

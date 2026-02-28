@@ -1,0 +1,21 @@
+// Falcon custom error handling style: try/catch + throw
+
+function safeDivide(a: number, b: number): number {
+    if (b == 0) {
+        throw "division by zero";
+    }
+    return a / b;
+}
+
+try {
+    show("10 / 2 =", safeDivide(10, 2));
+    show("10 / 0 =", safeDivide(10, 0));
+} catch (err) {
+    show("Caught error:", err);
+}
+
+try {
+    throw "manual failure";
+} catch (e) {
+    show("Recovered:", e);
+}

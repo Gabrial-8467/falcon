@@ -19,7 +19,7 @@ from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     ListLiteral, TupleLiteral, DictLiteral, SetLiteral, ArrayLiteral, Subscript,
     Stmt, ExprStmt, LetStmt, BlockStmt, IfStmt, WhileStmt,
-    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt,
+    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt, ThrowStmt, TryCatchStmt,
     # Pattern matching nodes
     Pattern, LiteralPattern, VariablePattern, TypePattern, ListPattern, TuplePattern,
     DictPattern, OrPattern, WildcardPattern, CaseArm, MatchExpr, MatchStmt
@@ -272,6 +272,19 @@ class Interpreter:
         if isinstance(stmt, MatchStmt):
             value = self._eval(stmt.value, env)
             self._execute_match(value, stmt.arms, env)
+            return
+
+        if isinstance(stmt, ThrowStmt):
+            thrown = self._eval(stmt.value, env)
+            raise InterpreterError(f"{thrown}")
+
+        if isinstance(stmt, TryCatchStmt):
+            try:
+                self._execute(stmt.try_block, env)
+            except InterpreterError as err:
+                catch_env = Environment(env)
+                catch_env.define(stmt.catch_name, str(err))
+                self._execute(stmt.catch_block, catch_env)
             return
 
         raise InterpreterError(f"Unknown statement type: {type(stmt).__name__}")

@@ -31,6 +31,8 @@ from .ast_nodes import (
     Variable,
     WhileStmt,
     DictLiteral,
+    ThrowStmt,
+    TryCatchStmt,
 )
 
 
@@ -221,6 +223,18 @@ class TypeChecker:
                 if arm.guard is not None:
                     self._infer_expr(arm.guard)
                 self._check_stmt(arm.body)
+            return
+
+        if isinstance(stmt, ThrowStmt):
+            self._infer_expr(stmt.value)
+            return
+
+        if isinstance(stmt, TryCatchStmt):
+            self._check_stmt(stmt.try_block)
+            self._push()
+            self._define(stmt.catch_name, "string")
+            self._check_stmt(stmt.catch_block)
+            self._pop()
             return
 
     def _infer_expr(self, expr: Expr) -> str:
