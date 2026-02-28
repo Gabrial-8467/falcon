@@ -1,10 +1,11 @@
 show ("Starting async stub...");
 
-var p = Promise.resolve(42);
+set p = Promise.resolve(42);
 
-p.then(function(x) {
+p.then(fn(x) {
     show ("Promise resolved with:");
     show (x);
 });
 
 show("Promise scheduled.");
+

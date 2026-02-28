@@ -450,9 +450,13 @@ class Compiler:
                 "+": OP_ADD, "-": OP_SUB, "*": OP_MUL, "/": OP_DIV,
                 "%": OP_MOD,
                 "==": OP_EQ, "!=": OP_NEQ, "<": OP_LT,
-                "<=": OP_LTE, ">": OP_GT, ">=": OP_GTE
+                "<=": OP_LTE, ">": OP_GT, ">=": OP_GTE,
+                "&&": OP_AND, "||": OP_OR,
             }
-            self._emit(opmap[expr.op], None)
+            op_code = opmap.get(expr.op)
+            if op_code is None:
+                raise CompileError(f"Unsupported binary operator in compiler: {expr.op}")
+            self._emit(op_code, None)
             return
 
         # ----- assign

@@ -1,13 +1,13 @@
-// Control Flow Demo - if/else, for, while, loop, break
+// Control Flow Demo - when/else, for, while, loop, break
 
 // If/else statements
-function checkNumber(n) {
-    if (n > 0) {
-        return "Positive";
-    } else if (n < 0) {
-        return "Negative";
+fn checkNumber(n) {
+    when (n > 0) {
+        give "Positive";
+    } else when (n < 0) {
+        give "Negative";
     } else {
-        return "Zero";
+        give "Zero";
     }
 }
 
@@ -17,31 +17,31 @@ show("checkNumber(0) =", checkNumber(0));
 
 // For loops with different steps
 show("\nFor loops:");
-for i := 1 to 5 step 1 {
+for i = 1 to 5 step 1 {
     show("Count up:", i);
 }
 
-for j := 10 to 1 step -2 {
+for j = 10 to 1 step -2 {
     show("Count down by 2:", j);
 }
 
 // While loop
 show("\nWhile loop:");
-var counter := 0;
+set counter = 0;
 while (counter < 3) {
     show("While iteration:", counter);
-    counter := counter + 1;
+    counter = counter + 1;
 }
 
 // Infinite loop with break
 show("\nControlled infinite loop:");
-function limitedLoop(maxIterations) {
-    var i := 0;
+fn limitedLoop(maxIterations) {
+    set i = 0;
     loop {
         show("Loop iteration:", i);
-        i := i + 1;
+        i = i + 1;
         
-        if (i >= maxIterations) {
+        when (i >= maxIterations) {
             break;
         }
     }
@@ -51,18 +51,19 @@ limitedLoop(3);
 
 // Nested loops
 show("\nNested loops:");
-for row := 1 to 3 step 1 {
-    for col := 1 to 3 step 1 {
+for row = 1 to 3 step 1 {
+    for col = 1 to 3 step 1 {
         show("Position:", row, ",", col);
     }
 }
 
 // Complex condition with logical operators
-function canVote(age, hasCitizenship) {
-    return (age >= 18) && hasCitizenship;
+fn canVote(age, hasCitizenship) {
+    give (age >= 18) && hasCitizenship;
 }
 
 show("\nVoting eligibility:");
 show("Can 25-year-old citizen vote?", canVote(25, true));
 show("Can 16-year-old citizen vote?", canVote(16, true));
 show("Can 25-year-old non-citizen vote?", canVote(25, false));
+

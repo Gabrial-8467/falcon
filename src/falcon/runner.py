@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from .lexer import Lexer, LexerError
 from .parser import Parser, ParseError
 from .interpreter import Interpreter, InterpreterError
-from .compiler import Compiler, Code
+from .compiler import Compiler, Code, CompileError
 from .vm import VM, VMRuntimeError
 from .builtins import BUILTINS
 from .type_checker import TypeChecker, TypeCheckError
@@ -115,7 +115,7 @@ def run_file(path: str) -> int:
         t0 = time.perf_counter()
         try:
             code_obj = compiler.compile_module(ast, name=path)
-        except NotImplementedError as e:
+        except (NotImplementedError, CompileError) as e:
             # Feature not implemented in compiler, use interpreter
             print(f"[Compiler] Feature not implemented: {e}")
             print("Falling back to interpreter...")

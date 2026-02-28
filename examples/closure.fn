@@ -1,27 +1,28 @@
 // Simple counter closure
-function makeCounter() {
-    var c = 0;
-    function inc() {
+fn makeCounter() {
+    set c = 0;
+    fn inc() {
         c = c + 1;
-        return c;
+        give c;
     }
-    return inc;
+    give inc;
 }
 
 // Create and use counter
-var counter = makeCounter();
+set counter = makeCounter();
 show("First call:", counter());  // 1
 show("Second call:", counter()); // 2
 show("Third call:", counter());  // 3
 
 // Advanced closure with parameters
-function makeAdder(x) {
-    return function(y) {
-        return x + y;
+fn makeAdder(x) {
+    give fn(y) {
+        give x + y;
     };
 }
 
-var add5 = makeAdder(5);
-var add10 = makeAdder(10);
+set add5 = makeAdder(5);
+set add10 = makeAdder(10);
 show("5 + 3 =", add5(3));    // 8
 show("10 + 7 =", add10(7));  // 17
+

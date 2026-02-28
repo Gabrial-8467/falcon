@@ -1,9 +1,10 @@
 // Basic "Hello, World!" program
 show("Hello, Falcon!");
 
-// Simple function
-function greet(name) {
-    return "Hello, " + name + "!";
+// Simple fn
+fn greet(name) {
+    give "Hello, " + name + "!";
 }
 
 show(greet("World"));
+

@@ -1,8 +1,8 @@
 // Operators Demo - Arithmetic, Comparison, Logical
 
 // Arithmetic operations
-var a := 10;
-var b := 3;
+set a = 10;
+set b = 3;
 
 show("Arithmetic Operations:");
 show("10 + 3 =", a + b);      // 13
@@ -21,8 +21,8 @@ show("10 < 3 =", a < b);       // false
 show("10 <= 3 =", a <= b);     // false
 
 // Logical operations
-var x := true;
-var y := false;
+set x = true;
+set y = false;
 
 show("\nLogical Operations:");
 show("true && false =", x && y);  // false
@@ -34,3 +34,4 @@ show("!false =", !y);            // true
 show("\nCombined Expressions:");
 show("(10 > 5) && (3 < 8) =", (a > 5) && (b < 8));  // true
 show("(10 == 3) || (5 != 2) =", (a == b) || (5 != 2));  // true
+

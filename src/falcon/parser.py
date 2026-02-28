@@ -51,6 +51,9 @@ class Parser:
         # handle explicit keywords first
         if self._match(TokenType.VAR):
             return self._var_or_const_declaration(is_const=False, is_var=True)
+        if self._check(TokenType.SET) and self._peek_next().type == TokenType.IDENT:
+            self._advance()
+            return self._var_or_const_declaration(is_const=False, is_var=False)
         if self._match(TokenType.CONST):
             return self._var_or_const_declaration(is_const=True, is_var=False)
         if self._match(TokenType.FUNCTION):
@@ -109,6 +112,9 @@ class Parser:
         return_type: Optional[TypeAnnotation] = None
         if self._match(TokenType.COLON):
             return_type = self._parse_type_annotation()
+        elif self._match(TokenType.EQ):
+            self._consume(TokenType.GT, "Expect '>' in function return annotation '=> type'")
+            return_type = self._parse_type_annotation()
         body = self._parse_block()
         return FunctionStmt(name, params, body, param_types=param_types, return_type=return_type)
 
@@ -121,6 +127,11 @@ class Parser:
                 val = self._expression()
             self._optional_semicolon()
             return ReturnStmt(val)
+
+        if self._match(TokenType.SAY):
+            val = self._expression()
+            self._optional_semicolon()
+            return ExprStmt(Call(Variable("show"), [val]))
 
         # if
         if self._match(TokenType.IF):
@@ -136,9 +147,12 @@ class Parser:
 
         # loop (infinite)
         if self._match(TokenType.LOOP):
-            self._consume(TokenType.LBRACE, "Expect '{' after 'loop'")
-            body_stmts = self._block()
-            return LoopStmt(BlockStmt(body_stmts))
+            if self._match(TokenType.LBRACE):
+                body_stmts = self._block()
+                return LoopStmt(BlockStmt(body_stmts))
+            cond = self._expression()
+            body = self._parse_block()
+            return WhileStmt(cond, body)
 
         # break
         if self._match(TokenType.BREAK):
@@ -171,9 +185,11 @@ class Parser:
         return ExprStmt(expr)
 
     def _if_statement(self) -> Stmt:
-        self._consume(TokenType.LPAREN, "Expect '(' after 'if'")
-        cond = self._expression()
-        self._consume(TokenType.RPAREN, "Expect ')' after if condition")
+        if self._match(TokenType.LPAREN):
+            cond = self._expression()
+            self._consume(TokenType.RPAREN, "Expect ')' after if condition")
+        else:
+            cond = self._expression()
         then_branch = self._block_or_statement()
         else_branch: Optional[Stmt] = None
         if self._match(TokenType.ELSE):
@@ -181,9 +197,11 @@ class Parser:
         return IfStmt(cond, then_branch, else_branch)
 
     def _while_statement(self) -> Stmt:
-        self._consume(TokenType.LPAREN, "Expect '(' after 'while'")
-        cond = self._expression()
-        self._consume(TokenType.RPAREN, "Expect ')' after while condition")
+        if self._match(TokenType.LPAREN):
+            cond = self._expression()
+            self._consume(TokenType.RPAREN, "Expect ')' after while condition")
+        else:
+            cond = self._expression()
         body = self._block_or_statement()
         return WhileStmt(cond, body)
 
@@ -335,6 +353,9 @@ class Parser:
             params, param_types = self._parse_params()
             return_type: Optional[TypeAnnotation] = None
             if self._match(TokenType.COLON):
+                return_type = self._parse_type_annotation()
+            elif self._match(TokenType.EQ):
+                self._consume(TokenType.GT, "Expect '>' in function return annotation '=> type'")
                 return_type = self._parse_type_annotation()
             body = self._parse_block()
             return FunctionExpr(

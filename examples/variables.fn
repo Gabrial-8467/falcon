@@ -1,10 +1,10 @@
-// Variable Declarations Demo - var, let, const with := and =
+// Variable Declarations Demo - set, set, const with = and =
 
-// Variable declarations with :=
-var x := 10;
-let y := 20;  // let works as an alias for var
-show("x := 10 =", x);
-show("y := 20 =", y);
+// Variable declarations with =
+set x = 10;
+set y = 20;  // set works as an alias for set
+show("x = 10 =", x);
+show("y = 20 =", y);
 
 // Constant declarations with =
 const pi = 3.14159;
@@ -13,27 +13,28 @@ show("const pi =", pi);
 show("const name =", name);
 
 // Variable reassignment
-x := x + 5;
+x = x + 5;
 show("x updated to:", x);
 
-// let variable reassignment
-y := y * 2;
+// set variable reassignment
+y = y * 2;
 show("y updated to:", y);
 
 // Multiple declarations
-var a := 1, b := 2, c := 3;
+set a = 1, b = 2, c = 3;
 show("a, b, c =", a, b, c);
 
 // Declaration with expressions
-var result := (x + y) * 2;
-show("result := (x + y) * 2 =", result);
+set result = (x + y) * 2;
+show("result = (x + y) * 2 =", result);
 
 // Variable types
-var number := 42;
-var text := "Hello, Falcon!";
-var boolean := true;
-var null_value := null;
+set number = 42;
+set text = "Hello, Falcon!";
+set boolean = true;
+set null_value = null;
 show("Number:", number);
 show("Text:", text);
 show("Boolean:", boolean);
 show("Null:", null_value);
+

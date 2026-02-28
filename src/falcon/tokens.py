@@ -65,6 +65,7 @@ class TokenType(Enum):
     NULL = auto()
     FUNCTION = auto()
     RETURN = auto()
+    SAY = auto()
     BREAK = auto()
     TRY = auto()
     CATCH = auto()

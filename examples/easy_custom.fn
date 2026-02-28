@@ -1,0 +1,19 @@
+// Super easy Falcon custom syntax
+
+set count = 0
+
+fn add(a: int, b: int) => int {
+    give a + b
+}
+
+when count == 0 {
+    say "start"
+} else {
+    say "non-zero"
+}
+
+loop count < 3 {
+    say add(count, 2)
+    count = count + 1
+}
+

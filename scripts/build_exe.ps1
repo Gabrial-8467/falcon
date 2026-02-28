@@ -22,7 +22,7 @@ Write-Host "Building single-file executable..."
     --onefile `
     --name $ExeName `
     --paths ".\src" `
-    ".\src\falcon\main.py"
+    ".\tools\falcon_cli.py"
 
 if (-not (Test-Path ".\dist\$ExeName.exe")) {
     throw "Build failed: .\dist\$ExeName.exe was not created."

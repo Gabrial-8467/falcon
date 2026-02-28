@@ -37,6 +37,35 @@ This repository contains the full Falcon **prototype implementation**, including
 
 Falcon is actively evolving toward a **production-grade scripting language** with modules, async, optimized bytecode, and an ahead-of-time compiler.
 
+## Custom Easy Syntax (Recommended)
+
+Falcon supports an easy custom style used across current examples:
+
+```falcon
+set count = 0
+
+fn add(a: int, b: int) => int {
+    give a + b
+}
+
+when count == 0 {
+    say "start"
+}
+
+loop count < 3 {
+    say add(count, 2)
+    count = count + 1
+}
+```
+
+Keyword aliases:
+- `fn`/`def` = `function`
+- `give` = `return`
+- `when` = `if`
+- `say expr` = `show(expr)`
+- `set name = value` = easy variable declaration
+- `loop condition { ... }` = while-style loop
+
 ---
 
 # ✨ Highlights (Prototype v0.3.0)
@@ -297,6 +326,7 @@ falcon/
 │
 ├── examples/                # Example programs demonstrating language features
 │   ├── hello.fn           # Simple Hello World program
+│   ├── easy_custom.fn     # Super easy custom syntax demo
 │   ├── variables.fn       # Variable declarations and types
 │   ├── type_annotations.fn # Language-level type annotations
 │   ├── functions.fn       # Function types and patterns
@@ -334,13 +364,31 @@ function greet(name) {
 show(greet("World"));
 ```
 
+### **easy_custom.fn** - Super Easy Custom Syntax
+```falcon
+set count = 0
+
+fn add(a: int, b: int) => int {
+    give a + b
+}
+
+when count == 0 {
+    say "start"
+}
+
+loop count < 3 {
+    say add(count, 2)
+    count = count + 1
+}
+```
+
 ### **variables.fn** - Variable Declarations
 ```falcon
-// Variable declarations with :=
-var x := 10;
-let y := 20;  // let works as an alias for var
-show("x := 10 =", x);
-show("y := 20 =", y);
+// Easy declarations
+set x = 10
+set y = 20
+show("x =", x)
+show("y =", y)
 
 // Constant declarations with =
 const pi = 3.14159;
@@ -349,7 +397,7 @@ show("const pi =", pi);
 show("const name =", name);
 
 // Variable reassignment
-x := x + 5;
+x = x + 5;
 show("x updated to:", x);
 ```
 
@@ -376,23 +424,23 @@ show(maybeName);
 ### **functions.fn** - Function Types & Patterns
 ```falcon
 // Function declaration
-function add(a, b) {
-    return a + b;
+fn add(a, b) {
+    give a + b
 }
 
 // Function with multiple parameters
-function greet(name, age) {
-    return "Hello, " + name + "! You are " + age + " years old.";
+fn greet(name, age) {
+    give "Hello, " + name + "! You are " + age + " years old."
 }
 
 // Function expression
-var multiply := function(x, y) {
-    return x * y;
-};
+set multiply = fn(x, y) {
+    give x * y
+}
 
 // Higher-order function
-function applyOperation(a, b, operation) {
-    return operation(a, b);
+fn applyOperation(a, b, operation) {
+    give operation(a, b)
 }
 
 show("add(5, 3) =", add(5, 3));
@@ -403,8 +451,8 @@ show("applyOperation(10, 5, add) =", applyOperation(10, 5, add));
 ### **operators.fn** - Arithmetic, Comparison & Logical
 ```falcon
 // Arithmetic operations
-var a := 10;
-var b := 3;
+set a = 10
+set b = 3
 
 show("10 + 3 =", a + b);      // 13
 show("10 - 3 =", a - b);      // 7

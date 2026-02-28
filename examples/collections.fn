@@ -1,17 +1,17 @@
 // Collection Types Demo - Lists, Tuples, Dictionaries, Sets, Arrays
 
 // List (dynamic array)
-var fruits := ["apple", "banana", "orange"];
+set fruits = ["apple", "banana", "orange"];
 show("List:", fruits);
 show("First fruit:", fruits[0]);
 
 // Tuple (immutable)
-var coordinates := (10, 20, 30);
+set coordinates = (10, 20, 30);
 show("Tuple:", coordinates);
 show("Second coordinate:", coordinates[1]);
 
 // Dictionary / Object
-var person := {
+set person = {
     name: "Alice",
     age: 25,
     city: "New York"
@@ -21,18 +21,18 @@ show("Name:", person.name);
 show("Age:", person["age"]);
 
 // Set
-var numbers := set{1, 2, 3, 4, 5};
+set numbers = set{1, 2, 3, 4, 5};
 show("Set:", numbers);
 
 // Array (fixed size)
-var scores := array[5];
-scores[0] := 95;
-scores[1] := 87;
-scores[2] := 92;
+set scores = array[5];
+scores[0] = 95;
+scores[1] = 87;
+scores[2] = 92;
 show("Array:", scores);
 
 // Nested collections
-var data := {
+set data = {
     users: [
         {name: "Bob", score: 85},
         {name: "Carol", score: 92}
@@ -41,3 +41,4 @@ var data := {
 };
 show("Nested data:", data);
 show("First user:", data.users[0].name);
+

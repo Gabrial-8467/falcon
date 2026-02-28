@@ -1,12 +1,13 @@
 // Classic recursive factorial implementation
-function fact(n) {
-    if (n == 0) { 
-        return 1; 
+fn fact(n) {
+    when (n == 0) { 
+        give 1; 
     }
-    return n * fact(n - 1);
+    give n * fact(n - 1);
 }
 
-// Test factorial function
+// Test factorial fn
 show("5! =", fact(5));    // 120
 show("6! =", fact(6));    // 720
 show("10! =", fact(10));  // 3628800
+

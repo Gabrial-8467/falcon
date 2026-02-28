@@ -1,10 +1,10 @@
 // Falcon custom error handling style: try/catch + throw
 
-function safeDivide(a: number, b: number): number {
-    if (b == 0) {
+fn safeDivide(a: number, b: number): number {
+    when (b == 0) {
         throw "division by zero";
     }
-    return a / b;
+    give a / b;
 }
 
 try {
@@ -19,3 +19,4 @@ try {
 } catch (e) {
     show("Recovered:", e);
 }
+
