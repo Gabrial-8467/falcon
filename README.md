@@ -640,11 +640,11 @@ show("Promise scheduled.");
 - [x] **Assignment operations** (=, :=)
 - [x] **Pattern matching** (native syntax with variable binding, guards, OR patterns)
 - [x] **Language-level type annotations** (runtime-checked declarations, params, returns)
+- [x] **Error handling** (try/catch/throw)
 
 ### 📋 Planned Features  
 - [ ] **Async / await** (stub implemented)
 - [ ] **Modules & imports**
-- [x] **Error handling** (try/catch/throw)
 - [ ] **Classes & objects**
 - [ ] **Generators**  
 
