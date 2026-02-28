@@ -25,7 +25,7 @@ from .ast_nodes import (
     DictPattern, OrPattern, WildcardPattern, CaseArm, MatchExpr, MatchStmt
 )
 from .env import Environment
-from .builtins import BUILTINS, Promise
+from .builtins import BUILTINS, Promise, RuntimeDict, RuntimeSet
 
 class InterpreterError(Exception):
     pass
@@ -275,16 +275,8 @@ class Interpreter:
             return [self._eval(e, env) for e in expr.elements]
         if isinstance(expr, TupleLiteral):
             return tuple(self._eval(e, env) for e in expr.elements)
-        if isinstance(expr, DictLiteral):
-            d = {}
-            for k_expr, v_expr in expr.entries:
-                # key_expr is a Literal containing string name
-                key = self._eval(k_expr, env)
-                val = self._eval(v_expr, env)
-                d[key] = val
-            return d
         if isinstance(expr, SetLiteral):
-            return set(self._eval(e, env) for e in expr.elements)
+            return RuntimeSet(set(self._eval(e, env) for e in expr.elements))
         if isinstance(expr, ArrayLiteral):
             size = self._eval(expr.size_expr, env)
             # Use FixedArray defined in builtins (import later)
@@ -338,15 +330,9 @@ class Interpreter:
                 return base[index]
             except Exception as e:
                 raise InterpreterError(str(e))
-        if isinstance(expr, Member):
-            base_val = self._eval(expr.base, env)
-            if isinstance(base_val, RuntimeDict):
-                return base_val.get(expr.name)
-            try:
-                return getattr(base_val, expr.name)
-            except AttributeError:
-                raise InterpreterError(f"Object has no attribute '{expr.name}'")
-
+        if isinstance(expr, Binary):
+            # Handle logical operators with short-circuiting
+            if expr.op == "&&":
                 left = self._eval(expr.left, env)
                 if not self._is_truthy(left):
                     return left
@@ -389,6 +375,15 @@ class Interpreter:
 
             raise InterpreterError(f"Unsupported binary operator: {expr.op}")
 
+        if isinstance(expr, Member):
+            base_val = self._eval(expr.base, env)
+            if isinstance(base_val, RuntimeDict):
+                return base_val.get(expr.name)
+            try:
+                return getattr(base_val, expr.name)
+            except AttributeError:
+                raise InterpreterError(f"Object has no attribute '{expr.name}'")
+
         if isinstance(expr, Assign):
             # evaluate value first
             val = self._eval(expr.value, env)
@@ -413,6 +408,15 @@ class Interpreter:
                     return val
                 except Exception as e:
                     raise InterpreterError(f"Failed to set attribute '{target.name}': {e}") from e
+            # Subscript target (base[index])
+            if isinstance(target, Subscript):
+                base_val = self._eval(target.base, env)
+                index_val = self._eval(target.index, env)
+                try:
+                    base_val[index_val] = val
+                    return val
+                except Exception as e:
+                    raise InterpreterError(f"Failed to set subscript: {e}") from e
             raise InterpreterError("Invalid assignment target")
 
         if isinstance(expr, Member):
@@ -555,12 +559,12 @@ class Interpreter:
             if match_result is not None:
                 # Check guard condition if present
                 if arm.guard is not None:
-                    guard_result = self._eval(arm.guard, env)
+                    guard_result = self._eval(arm.guard, match_result)
                     if not self._is_truthy(guard_result):
                         continue
                 
                 # Execute the arm body in the environment with pattern variables bound
-                self._execute(arm.body, env)
+                self._execute(arm.body, match_result)
                 return
         
         # No pattern matched - this could be an error or just no-op
@@ -574,7 +578,7 @@ class Interpreter:
             if match_result is not None:
                 # Check guard condition if present
                 if arm.guard is not None:
-                    guard_result = self._eval(arm.guard, env)
+                    guard_result = self._eval(arm.guard, match_result)
                     if not self._is_truthy(guard_result):
                         continue
                 
@@ -582,9 +586,9 @@ class Interpreter:
                 result = None
                 for stmt in arm.body.body:
                     if isinstance(stmt, ExprStmt):
-                        result = self._eval(stmt.expr, env)
+                        result = self._eval(stmt.expr, match_result)
                     else:
-                        self._execute(stmt, env)
+                        self._execute(stmt, match_result)
                 return result
         
         # No pattern matched - return None (could raise error instead)

@@ -52,7 +52,7 @@ class Parser:
         if self._match(TokenType.VAR):
             return self._var_or_const_declaration(is_const=False, is_var=True)
         if self._match(TokenType.CONST):
-            return self._var_or_const_declaration(is_const=True)
+            return self._var_or_const_declaration(is_const=True, is_var=False)
         if self._match(TokenType.FUNCTION):
             return self._function_declaration()
         if self._match(TokenType.LET):
@@ -70,18 +70,32 @@ class Parser:
         return self._statement()
 
     def _var_or_const_declaration(self, is_const: bool, is_var: bool) -> Stmt:
-        name_tok = self._consume(TokenType.IDENT, "Expect variable name after declaration")
-        name = name_tok.lexeme
-        initializer: Optional[Expr] = None
+        declarations = []
+        
+        while True:
+            name_tok = self._consume(TokenType.IDENT, "Expect variable name after declaration")
+            name = name_tok.lexeme
+            initializer: Optional[Expr] = None
 
-        # Prefer ':=' (DECL) new syntax, but accept '=' as fallback
-        if self._match(TokenType.DECL):
-            initializer = self._expression()
-        elif self._match(TokenType.EQ):
-            initializer = self._expression()
+            # Prefer ':=' (DECL) new syntax, but accept '=' as fallback
+            if self._match(TokenType.DECL):
+                initializer = self._expression()
+            elif self._match(TokenType.EQ):
+                initializer = self._expression()
 
+            declarations.append(LetStmt(name, initializer, is_const=is_const, is_var=is_var))
+            
+            # Check for comma for multiple declarations
+            if not self._match(TokenType.COMMA):
+                break
+        
         self._optional_semicolon()
-        return LetStmt(name, initializer, is_const=is_const, is_var=is_var)
+        
+        # Return multiple statements as a block
+        if len(declarations) == 1:
+            return declarations[0]
+        else:
+            return BlockStmt(declarations)
 
     def _function_declaration(self) -> Stmt:
         name_tok = self._consume(TokenType.IDENT, "Expect function name after 'function'")
@@ -207,9 +221,9 @@ class Parser:
 
     def _assignment(self) -> Expr:
         expr = self._binary_expression(0)
-        if self._match(TokenType.EQ):
+        if self._match(TokenType.EQ) or self._match(TokenType.DECL):
             value = self._assignment()
-            if isinstance(expr, Variable) or isinstance(expr, Member):
+            if isinstance(expr, Variable) or isinstance(expr, Member) or isinstance(expr, Subscript):
                 return Assign(expr, value)
             raise ParseError(f"Invalid assignment target at {self._previous()}")
         return expr
@@ -295,6 +309,33 @@ class Parser:
             body = self._parse_block()
             return FunctionExpr(name, params, body)
 
+        # collection literals
+        if self._match(TokenType.LBRACKET):
+            return self._list_literal()
+        
+        if self._match(TokenType.LPAREN):
+            # Tuple literal or grouping
+            if self._check(TokenType.RPAREN):
+                self._advance()
+                return TupleLiteral([])
+            
+            # Check if this is a tuple by looking ahead
+            elements = []
+            elements.append(self._expression())
+            
+            if self._match(TokenType.COMMA):
+                # Tuple: (expr1, expr2, ...)
+                while not self._check(TokenType.RPAREN) and not self._is_at_end():
+                    elements.append(self._expression())
+                    if not self._match(TokenType.COMMA):
+                        break
+                self._consume(TokenType.RPAREN, "Expect ')' after tuple")
+                return TupleLiteral(elements)
+            else:
+                # Grouping: (expr)
+                self._consume(TokenType.RPAREN, "Expect ')' after grouping")
+                return Grouping(elements[0])
+
         if self._match(TokenType.NUMBER):
             return Literal(self._previous().literal)
         if self._match(TokenType.STRING):
@@ -308,6 +349,19 @@ class Parser:
         if self._match(TokenType.IDENT):
             return Variable(self._previous().lexeme)
 
+        # set literal: set{...}
+        if self._match(TokenType.SET):
+            self._consume(TokenType.LBRACE, "Expect '{' after 'set'")
+            return self._set_literal()
+        
+        # array literal: array[...]
+        if self._match(TokenType.ARRAY):
+            self._consume(TokenType.LBRACKET, "Expect '[' after 'array'")
+            return self._array_literal()
+        
+        # dict literal: {...}
+        if self._match(TokenType.LBRACE):
+            return self._dict_literal()
 
         raise ParseError(f"Unexpected token: {self._peek()}")
 
@@ -444,12 +498,19 @@ class Parser:
             guard = None
             if self._match(TokenType.IF):
                 guard = self._expression()
+            # Expect ':' after pattern (and guard if present)
+            self._consume(TokenType.COLON, "Expect ':' after case pattern")
             
-            self._consume(TokenType.LBRACE, "Expect '{' after case pattern")
-            body_stmts = self._block()
-            self._consume(TokenType.RBRACE, "Expect '}' after case body")
-            
-            arms.append(CaseArm(pattern, guard, BlockStmt(body_stmts)))
+            # Check if next token is '{' for block body or expression
+            if self._match(TokenType.LBRACE):
+                # Block form: case pattern: guard { statements... }
+                body_stmts = self._block()
+                arms.append(CaseArm(pattern, guard, BlockStmt(body_stmts)))
+            else:
+                # Expression form: case pattern: guard expression
+                expr = self._expression()
+                self._optional_semicolon()
+                arms.append(CaseArm(pattern, guard, BlockStmt([ExprStmt(expr)])))
         
         self._consume(TokenType.RBRACE, "Expect '}' after match statement")
         return MatchStmt(value, arms)
@@ -483,7 +544,7 @@ class Parser:
         """Parse a pattern for matching."""
         # Handle OR patterns first: pattern | pattern | pattern
         patterns = [self._parse_single_pattern()]
-        while self._match(TokenType.OROR):
+        while self._match(TokenType.PIPE):
             patterns.append(self._parse_single_pattern())
         
         if len(patterns) == 1:

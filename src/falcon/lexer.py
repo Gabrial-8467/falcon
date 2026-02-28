@@ -32,6 +32,7 @@ KEYWORDS = {
     "null": TokenType.NULL,
     "function": TokenType.FUNCTION,
     "return": TokenType.RETURN,
+    "break": TokenType.BREAK,
     "set": TokenType.SET,
     "array": TokenType.ARRAY,
     "match": TokenType.MATCH,
@@ -150,6 +151,7 @@ class Lexer:
         # single-char tokens and simple two-char detection handled below
         single_map = {
             "[": TokenType.LBRACKET, "]": TokenType.RBRACKET,
+            "{": TokenType.LBRACE, "}": TokenType.RBRACE,
             "(": TokenType.LPAREN, ")": TokenType.RPAREN,
             ";": TokenType.SEMI, ",": TokenType.COMMA,
             ".": TokenType.DOT, "+": TokenType.PLUS,
@@ -157,7 +159,7 @@ class Lexer:
             "%": TokenType.PERC, "!": TokenType.BANG,
             "<": TokenType.LT, ">": TokenType.GT,
             "=": TokenType.EQ,
-            "&": None, "|": None,
+            "&": None, "|": TokenType.PIPE,
         }
 
         if c in single_map:
@@ -195,7 +197,8 @@ class Lexer:
                 if self._match("|"):
                     self._add_token(TokenType.OROR)
                     return
-                raise LexerError(f"Unexpected single '|' at {self.lineno}:{self.col}")
+                self._add_token(TokenType.PIPE)
+                return
             # other single-char
             ttype = single_map[c]
             if ttype is not None:

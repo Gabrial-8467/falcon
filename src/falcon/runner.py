@@ -95,7 +95,7 @@ def run_file(path: str) -> int:
         cached = False
 
     # Timers
-    lex_time = parse_time = compile_time if not cached else 0.0
+    lex_time = parse_time = compile_time = 0.0 if not cached else 0.0
     vm_time = interp_time = None
     total_start = time.perf_counter()
 
@@ -111,7 +111,13 @@ def run_file(path: str) -> int:
         # Compilation
         compiler = Compiler()
         t0 = time.perf_counter()
-        code_obj = compiler.compile_module(ast, name=path)
+        try:
+            code_obj = compiler.compile_module(ast, name=path)
+        except NotImplementedError as e:
+            # Feature not implemented in compiler, use interpreter
+            print(f"[Compiler] Feature not implemented: {e}")
+            print("Falling back to interpreter...")
+            code_obj = None
         compile_time = time.perf_counter() - t0
         # Store in cache
         _compile_cache[path] = (src_mtime, code_obj)

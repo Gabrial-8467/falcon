@@ -105,18 +105,18 @@ show(classify_value("red"));     // "primary color"
 show(classify_value([42]));      // "single item container"
 show(classify_value((42,)));     // "single item container"
 
-// Nested pattern matching
-function deep_match(data) {
-    return match data {
-        case [point] where point is {x: x, y: y}: {
-            "single point: (" + x + ", " + y + ")";
-        }
-        case [p1, p2] where p1 is {x: x1, y: y1} && p2 is {x: x2, y: y2}: {
-            "two points: (" + x1 + ", " + y1 + ") and (" + x2 + ", " + y2 + ")";
-        }
-        case _: "other structure";
-    };
-}
+// Nested pattern matching (not yet implemented)
+// function deep_match(data) {
+//     return match data {
+//         case [point] if point is {x: x, y: y}: {
+//             "single point: (" + x + ", " + y + ")";
+//         }
+//         case [p1, p2] if p1 is {x: x1, y: y1} && p2 is {x: x2, y: y2}: {
+//             "two points: (" + x1 + ", " + y1 + ") and (" + x2 + ", " + y2 + ")";
+//         }
+//         case _: "other structure";
+//     };
+// }
 
 // Note: This shows the concept - actual nested matching might need refinement
 show("Pattern matching demo complete!");

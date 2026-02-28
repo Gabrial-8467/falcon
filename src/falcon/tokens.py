@@ -3,6 +3,9 @@ from enum import Enum, auto
 from dataclasses import dataclass
 
 class TokenType(Enum):
+    # --- Special tokens ---
+    EOF = auto()        # End of file
+    
     # --- Single-character tokens ---
     COLON = auto()       # :
     LBRACKET = auto()    # [
@@ -33,6 +36,9 @@ class TokenType(Enum):
     GTE = auto()       # >=
     ANDAND = auto()    # &&
     OROR = auto()      # ||
+    
+    # --- Single-character operators ---
+    PIPE = auto()       # | (pattern matching OR)
 
     # --- Declaration / method operators (language-specific) ---
     DECL = auto()          # :=  (declaration)

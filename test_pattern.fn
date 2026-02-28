@@ -1,0 +1,3 @@
+match x {
+    case x if x < 0: "negative";
+}

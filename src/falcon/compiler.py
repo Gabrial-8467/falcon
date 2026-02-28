@@ -509,15 +509,13 @@ class Compiler:
     
     def _compile_match_stmt(self, stmt: MatchStmt):
         """Compile a match statement."""
-        # For now, delegate to interpreter by not compiling to bytecode
-        # This is a complex feature that needs careful VM integration
-        pass
+        # Match statements require interpreter for now
+        raise NotImplementedError("Match statements require interpreter")
     
     def _compile_match_expr(self, expr: MatchExpr):
         """Compile a match expression."""
-        # For now, delegate to interpreter by not compiling to bytecode
-        # This is a complex feature that needs careful VM integration
-        pass
+        # Match expressions require interpreter for now
+        raise NotImplementedError("Match expressions require interpreter")
 
 
 def compile_module_to_code(stmts, name="<module>", verbose=False):

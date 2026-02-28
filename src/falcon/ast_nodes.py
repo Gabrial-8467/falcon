@@ -158,11 +158,13 @@ class LetBlockStmt(Stmt):
     name: variable name
     initializer: optional Expr for initial value
     is_const: bool (future extension, currently always False for let)
+    is_var: bool (distinguishes between var and let declarations)
     block: BlockStmt – body executed with its own environment where the variable is scoped
     """
     name: str
     initializer: Optional[Expr] = None
     is_const: bool = False
+    is_var: bool = False
     type_ann: Optional[TypeAnnotation] = None
     block: "BlockStmt" = None
 

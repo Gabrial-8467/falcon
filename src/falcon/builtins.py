@@ -69,6 +69,9 @@ class _Console:
     def error(*args: Any) -> None:
         print("ERROR:", " ".join(_to_display(a) for a in args), file=sys.stderr)
 
+# Create console instance
+console = _Console()
+
 # --------------------
 # File I/O with safety checks
 # --------------------
@@ -283,16 +286,18 @@ def exit_builtin(code: int = 0) -> None:
 # Export builtins mapping (used by VM)
 # --------------------
 BUILTINS: Dict[str, Callable[..., Any]] = {
-    "list": lambda *a: RuntimeList(a),
-    "tuple": lambda *a: RuntimeTuple(a),
-    "dict": lambda **kw: RuntimeDict(kw),
-    "set": lambda *a: RuntimeSet(a),
+    "console": console,
+    "Promise": Promise,
+    "show": show,
+    "list": lambda: [],
+    "tuple": lambda: (),
+    "dict": lambda: {},
+    "set": lambda: set(),
     "array": lambda size: FixedArray(size),
     "len": len_builtin,
     "range": range_builtin,
     "typeOf": typeOf,
     "assert": assert_builtin,
-    "exit": exit_builtin,
     "readFile": readFile,
     "writeFile": writeFile,
     "toString": toString,

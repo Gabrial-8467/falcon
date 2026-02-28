@@ -1,0 +1,23 @@
+// Test the specific case that was failing
+function categorize_number(n) {
+    match n {
+        case x if x < 0: {
+            show("negative");
+        }
+        case x if x == 0: {
+            show("zero");
+        }
+        case x if x > 0 && x < 10: {
+            show("positive single digit");
+        }
+        case x if x >= 10: {
+            show("positive multi-digit");
+        }
+    }
+}
+
+show("Testing numbers:");
+categorize_number(-5);
+categorize_number(0);
+categorize_number(5);
+categorize_number(15);
