@@ -7,7 +7,7 @@ Includes:
 """
 
 from __future__ import annotations
-from typing import Any, List, Tuple, Dict
+from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 import hashlib
@@ -90,14 +90,21 @@ class Code:
 
 
 class FunctionObject:
-    def __init__(self, name, code=None, ast_node=None, argcount=0, nlocals=0):
-        self.name = name
-        self.code = code
-        self.ast_node = ast_node
-        self.argcount = argcount
-        self.nlocals = nlocals
+    def __init__(
+        self,
+        name: str,
+        code: Optional[Code] = None,
+        ast_node: Optional[FunctionExpr] = None,
+        argcount: int = 0,
+        nlocals: int = 0,
+    ) -> None:
+        self.name: str = name
+        self.code: Optional[Code] = code
+        self.ast_node: Optional[FunctionExpr] = ast_node
+        self.argcount: int = argcount
+        self.nlocals: int = nlocals
 
-    def is_ast_backed(self):
+    def is_ast_backed(self) -> bool:
         return self.ast_node is not None
 
 
@@ -113,20 +120,20 @@ class Compiler:
     # Simple in-memory cache for compiled modules (source hash -> Code)
     _cache: Dict[int, Code] = {}
 
-    def __init__(self, verbose=False):
-        self.verbose = verbose
-        self.instructions = []
-        self.consts = []
+    def __init__(self, verbose: bool = False) -> None:
+        self.verbose: bool = verbose
+        self.instructions: List[Tuple[int, Any]] = []
+        self.consts: List[Any] = []
         self.locals: Dict[str, int] = {}
-        self.next_local = 0
-        self.argcount = 0
-        self.name = "<module>"
-        self.loop_stack = []
+        self.next_local: int = 0
+        self.argcount: int = 0
+        self.name: str = "<module>"
+        self.loop_stack: List[Dict[str, Any]] = []
 
     # -------------
     # Public entry
     # -------------
-    def compile_module(self, stmts: List[Stmt], name="<module>"):
+    def compile_module(self, stmts: List[Stmt], name: str = "<module>") -> Code:
         # Compute a hash of the AST structure for caching
         ast_hash = hash(str(stmts))
         if ast_hash in self._cache:
@@ -150,19 +157,19 @@ class Compiler:
     # -------------
     # Helpers
     # -------------
-    def _add_const(self, v):
+    def _add_const(self, v: Any) -> int:
         self.consts.append(v)
         return len(self.consts) - 1
 
-    def _emit(self, op, arg):
+    def _emit(self, op: int, arg: Any) -> None:
         self.instructions.append((op, arg))
 
-    def _emit_jump(self, op):
+    def _emit_jump(self, op: int) -> int:
         idx = len(self.instructions)
         self._emit(op, -1)
         return idx
 
-    def _patch(self, idx, target):
+    def _patch(self, idx: int, target: int) -> None:
         op, _ = self.instructions[idx]
         self.instructions[idx] = (op, target)
 
@@ -197,7 +204,7 @@ class Compiler:
     # =====================
     # FAST LOOP DETECTION
     # =====================
-    def _can_fastcount(self, stmt: LoopStmt):
+    def _can_fastcount(self, stmt: LoopStmt) -> Optional[Tuple[int, int]]:
         """
         Detect:
             if (i == LIMIT) break;
@@ -250,7 +257,7 @@ class Compiler:
     # =====================
     # STATEMENTS
     # =====================
-    def _compile_stmt(self, stmt):
+    def _compile_stmt(self, stmt: Stmt) -> None:
 
         # ---------------- Block
         if isinstance(stmt, BlockStmt):
@@ -388,7 +395,7 @@ class Compiler:
     # =====================
     # EXPRESSIONS
     # =====================
-    def _compile_expr(self, expr):
+    def _compile_expr(self, expr: Expr) -> None:
 
         # ----- literal
         if isinstance(expr, Literal):
@@ -512,12 +519,14 @@ class Compiler:
         # Match statements require interpreter for now
         raise NotImplementedError("Match statements require interpreter")
     
-    def _compile_match_expr(self, expr: MatchExpr):
+    def _compile_match_expr(self, expr: MatchExpr) -> None:
         """Compile a match expression."""
         # Match expressions require interpreter for now
         raise NotImplementedError("Match expressions require interpreter")
 
 
-def compile_module_to_code(stmts, name="<module>", verbose=False):
+def compile_module_to_code(
+    stmts: List[Stmt], name: str = "<module>", verbose: bool = False
+) -> Code:
     c = Compiler(verbose)
     return c.compile_module(stmts, name)

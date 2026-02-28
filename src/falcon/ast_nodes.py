@@ -5,7 +5,7 @@ Lightweight dataclasses representing Expressions and Statements
 for the Falcon language.
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, List, Optional
 
 # ================================================================
@@ -119,6 +119,8 @@ class FunctionExpr(Expr):
     name: Optional[str]
     params: List[str]
     body: "BlockStmt"
+    param_types: dict[str, TypeAnnotation] = field(default_factory=dict)
+    return_type: Optional[TypeAnnotation] = None
     def __repr__(self) -> str:
         return f"FunctionExpr({self.name or '<anon>'}({', '.join(self.params)}), {self.body!r})"
 
@@ -259,6 +261,8 @@ class FunctionStmt(Stmt):
     name: str
     params: List[str]
     body: BlockStmt
+    param_types: dict[str, TypeAnnotation] = field(default_factory=dict)
+    return_type: Optional[TypeAnnotation] = None
     def __repr__(self) -> str:
         return f"FunctionStmt({self.name}({', '.join(self.params)}), {self.body!r})"
 

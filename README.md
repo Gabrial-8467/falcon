@@ -276,6 +276,7 @@ falcon/
 ├── examples/                # Example programs demonstrating language features
 │   ├── hello.fn           # Simple Hello World program
 │   ├── variables.fn       # Variable declarations and types
+│   ├── type_annotations.fn # Language-level type annotations
 │   ├── functions.fn       # Function types and patterns
 │   ├── operators.fn      # Arithmetic, comparison, logical operations
 │   ├── collections.fn     # Lists, tuples, dictionaries, sets, arrays
@@ -284,6 +285,7 @@ falcon/
 │   ├── closure.fn         # Closure demonstration
 │   ├── loop.fn           # Loop constructs
 │   ├── pattern_matching.fn # Advanced pattern matching examples
+│   ├── match_guards.fn    # Pattern matching with guards and dict destructuring
 │   └── async_stub.fn      # Promise API (synchronous stub)
 │
 ├── assets/                 # Project assets (logos, images)
@@ -326,6 +328,26 @@ show("const name =", name);
 // Variable reassignment
 x := x + 5;
 show("x updated to:", x);
+```
+
+### **type_annotations.fn** - Language-level Type Annotations
+```falcon
+var count: int := 3;
+var title: string := "Falcon";
+const enabled: bool = true;
+
+function add(a: int, b: int): int {
+    return a + b;
+}
+
+function label(names: list[string]): string {
+    return "users:" + names[0];
+}
+
+var maybeName: string | null := "Ava";
+show(add(count, 9));
+show(label(["Falcon"]));
+show(maybeName);
 ```
 
 ### **functions.fn** - Function Types & Patterns
@@ -533,6 +555,25 @@ function controlledLoop() {
 controlledLoop();
 ```
 
+### **match_guards.fn** - Pattern Matching with Guards
+```falcon
+function classifyUser(user) {
+    return match user {
+        case { role: "admin", active: true, name: n }: "admin:" + n;
+        case { role: "member", score: s } if s >= 90: "top-member";
+        case { role: "member", score: s } if s >= 50: "member";
+        case { role: "guest" }: "guest";
+        case _: "unknown";
+    };
+}
+
+show(classifyUser({ role: "admin", active: true, name: "Ava" }));
+show(classifyUser({ role: "member", score: 95 }));
+show(classifyUser({ role: "member", score: 64 }));
+show(classifyUser({ role: "guest" }));
+show(classifyUser({ foo: "bar" }));
+```
+
 ### **async_stub.fn** - Promise API (Synchronous)
 ```falcon
 show("Starting async stub...");
@@ -582,7 +623,7 @@ show("Promise scheduled.");
 - [x] **Pattern matching** (native syntax with variable binding, guards, OR patterns)
 
 ### 📋 Planned Features  
-- [ ] **Type annotations**
+- [x] **Language-level type annotations** (runtime-checked declarations, params, returns)
 - [ ] **Async / await** (stub implemented)
 - [ ] **Modules & imports**
 - [ ] **Error handling** (try/catch)

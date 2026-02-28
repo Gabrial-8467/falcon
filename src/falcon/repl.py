@@ -24,6 +24,7 @@ except Exception:
 from .lexer import Lexer, LexerError
 from .parser import Parser, ParseError
 from .interpreter import Interpreter, InterpreterError
+from .type_checker import TypeChecker, TypeCheckError
 
 _HISTFILE = os.path.expanduser("~/.falcon_history")
 
@@ -94,6 +95,7 @@ def _run_source(source: str, interpreter: Interpreter, filename: str = "<repl>")
         tokens = lexer.lex()
         parser = Parser(tokens)
         stmts = parser.parse()
+        TypeChecker().check(stmts)
         interpreter.interpret(stmts)
     except LexerError as le:
         print(f"{filename}: Lexer error: {le}", file=sys.stderr)
@@ -101,6 +103,8 @@ def _run_source(source: str, interpreter: Interpreter, filename: str = "<repl>")
         print(f"{filename}: Parse error: {pe}", file=sys.stderr)
     except InterpreterError as ie:
         print(f"{filename}: Runtime error: {ie}", file=sys.stderr)
+    except TypeCheckError as te:
+        print(f"{filename}: Type error: {te}", file=sys.stderr)
     except Exception:
         print(f"{filename}: Unhandled error during evaluation:", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)

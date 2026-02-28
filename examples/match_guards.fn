@@ -1,0 +1,18 @@
+// match_guards.fn
+// Demonstrates pattern matching with nested structures and guards.
+
+function classifyUser(user) {
+    return match user {
+        case { role: "admin", active: true, name: n }: "admin:" + n;
+        case { role: "member", score: s } if s >= 90: "top-member";
+        case { role: "member", score: s } if s >= 50: "member";
+        case { role: "guest" }: "guest";
+        case _: "unknown";
+    };
+}
+
+show(classifyUser({ role: "admin", active: true, name: "Ava" }));   // admin:Ava
+show(classifyUser({ role: "member", score: 95 }));                  // top-member
+show(classifyUser({ role: "member", score: 64 }));                  // member
+show(classifyUser({ role: "guest" }));                              // guest
+show(classifyUser({ foo: "bar" }));                                 // unknown

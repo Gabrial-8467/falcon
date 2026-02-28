@@ -1,0 +1,17 @@
+// Falcon language-level type annotations (runtime-checked)
+
+var count: int := 3;
+var title: string := "Falcon";
+const enabled: bool = true;
+
+function add(a: int, b: int): int {
+    return a + b;
+}
+
+function banner(name: string): string {
+    return "Hello, " + name;
+}
+
+show(add(count, 9));        // 12
+show(banner(title));        // Hello, Falcon
+show(enabled);              // true

@@ -22,7 +22,7 @@ from .tokens import Token, TokenType
 from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     ListLiteral, TupleLiteral, DictLiteral, SetLiteral, ArrayLiteral, Subscript,
-    Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt,
+    Stmt, ExprStmt, LetStmt, PrintStmt, BlockStmt, IfStmt, WhileStmt, TypeAnnotation,
     FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt,
     # Pattern matching nodes
     Pattern, LiteralPattern, VariablePattern, TypePattern, ListPattern, TuplePattern,
@@ -36,9 +36,9 @@ class ParseError(Exception):
 
 
 class Parser:
-    def __init__(self, tokens: List[Token]):
-        self.tokens = tokens
-        self.current = 0
+    def __init__(self, tokens: List[Token]) -> None:
+        self.tokens: List[Token] = tokens
+        self.current: int = 0
 
     def parse(self) -> List[Stmt]:
         stmts: List[Stmt] = []
@@ -70,11 +70,14 @@ class Parser:
         return self._statement()
 
     def _var_or_const_declaration(self, is_const: bool, is_var: bool) -> Stmt:
-        declarations = []
+        declarations: List[Stmt] = []
         
         while True:
             name_tok = self._consume(TokenType.IDENT, "Expect variable name after declaration")
             name = name_tok.lexeme
+            type_ann: Optional[TypeAnnotation] = None
+            if self._match(TokenType.COLON):
+                type_ann = self._parse_type_annotation()
             initializer: Optional[Expr] = None
 
             # Prefer ':=' (DECL) new syntax, but accept '=' as fallback
@@ -83,7 +86,9 @@ class Parser:
             elif self._match(TokenType.EQ):
                 initializer = self._expression()
 
-            declarations.append(LetStmt(name, initializer, is_const=is_const, is_var=is_var))
+            declarations.append(
+                LetStmt(name, initializer, is_const=is_const, is_var=is_var, type_ann=type_ann)
+            )
             
             # Check for comma for multiple declarations
             if not self._match(TokenType.COMMA):
@@ -100,9 +105,12 @@ class Parser:
     def _function_declaration(self) -> Stmt:
         name_tok = self._consume(TokenType.IDENT, "Expect function name after 'function'")
         name = name_tok.lexeme
-        params = self._parse_params()
+        params, param_types = self._parse_params()
+        return_type: Optional[TypeAnnotation] = None
+        if self._match(TokenType.COLON):
+            return_type = self._parse_type_annotation()
         body = self._parse_block()
-        return FunctionStmt(name, params, body)
+        return FunctionStmt(name, params, body, param_types=param_types, return_type=return_type)
 
     # ---------------- statements ----------------
     def _statement(self) -> Stmt:
@@ -305,9 +313,14 @@ class Parser:
             name: Optional[str] = None
             if self._check(TokenType.IDENT):
                 name = self._advance().lexeme
-            params = self._parse_params()
+            params, param_types = self._parse_params()
+            return_type: Optional[TypeAnnotation] = None
+            if self._match(TokenType.COLON):
+                return_type = self._parse_type_annotation()
             body = self._parse_block()
-            return FunctionExpr(name, params, body)
+            return FunctionExpr(
+                name, params, body, param_types=param_types, return_type=return_type
+            )
 
         # collection literals
         if self._match(TokenType.LBRACKET):
@@ -320,7 +333,7 @@ class Parser:
                 return TupleLiteral([])
             
             # Check if this is a tuple by looking ahead
-            elements = []
+            elements: List[Expr] = []
             elements.append(self._expression())
             
             if self._match(TokenType.COMMA):
@@ -392,7 +405,7 @@ class Parser:
         return ArrayLiteral(size_expr)
 
     def _dict_literal(self) -> Expr:
-        entries: List[tuple] = []
+        entries: List[tuple[Expr, Expr]] = []
         if not self._check(TokenType.RBRACE):
             while True:
                 # parse key
@@ -411,18 +424,46 @@ class Parser:
         return DictLiteral(entries)
 
     # ---------------- helpers ----------------
-    def _parse_params(self) -> List[str]:
+    def _parse_params(self) -> tuple[List[str], dict[str, TypeAnnotation]]:
         self._consume(TokenType.LPAREN, "Expect '(' before parameter list")
         params: List[str] = []
+        param_types: dict[str, TypeAnnotation] = {}
         if not self._check(TokenType.RPAREN):
             while True:
                 tok = self._consume(TokenType.IDENT, "Expect parameter name")
                 params.append(tok.lexeme)
+                if self._match(TokenType.COLON):
+                    param_types[tok.lexeme] = self._parse_type_annotation()
                 if self._match(TokenType.COMMA):
                     continue
                 break
         self._consume(TokenType.RPAREN, "Expect ')' after parameter list")
-        return params
+        return params, param_types
+
+    def _parse_type_annotation(self) -> TypeAnnotation:
+        return TypeAnnotation(self._parse_type_union())
+
+    def _parse_type_union(self) -> str:
+        parts = [self._parse_type_primary()]
+        while self._match(TokenType.PIPE):
+            parts.append(self._parse_type_primary())
+        if len(parts) == 1:
+            return parts[0]
+        return " | ".join(parts)
+
+    def _parse_type_primary(self) -> str:
+        tok = self._consume(TokenType.IDENT, "Expect type name after ':'")
+        base = tok.lexeme
+        if self._match(TokenType.LBRACKET):
+            args: List[str] = []
+            if not self._check(TokenType.RBRACKET):
+                while True:
+                    args.append(self._parse_type_union())
+                    if not self._match(TokenType.COMMA):
+                        break
+            self._consume(TokenType.RBRACKET, "Expect ']' after generic type arguments")
+            return f"{base}[{', '.join(args)}]"
+        return base
 
     def _parse_block(self) -> BlockStmt:
         if not self._match(TokenType.LBRACE):
@@ -451,7 +492,7 @@ class Parser:
             return self._advance()
         raise ParseError(message + f" at {self._peek()}")
 
-    def _optional_semicolon(self):
+    def _optional_semicolon(self) -> None:
         # Accept semicolon if present; optional otherwise.
         if self._match(TokenType.SEMI):
             return
@@ -489,7 +530,7 @@ class Parser:
         value = self._expression()
         self._consume(TokenType.LBRACE, "Expect '{' after match value")
         
-        arms = []
+        arms: List[CaseArm] = []
         while not self._check(TokenType.RBRACE) and not self._is_at_end():
             self._consume(TokenType.CASE, "Expect 'case' in match statement")
             pattern = self._parse_pattern()
@@ -520,7 +561,7 @@ class Parser:
         value = self._expression()
         self._consume(TokenType.LBRACE, "Expect '{' after match value")
         
-        arms = []
+        arms: List[CaseArm] = []
         while not self._check(TokenType.RBRACE) and not self._is_at_end():
             self._consume(TokenType.CASE, "Expect 'case' in match expression")
             pattern = self._parse_pattern()
@@ -573,7 +614,7 @@ class Parser:
         
         # List pattern: [pattern1, pattern2, ...]
         if self._match(TokenType.LBRACKET):
-            elements = []
+            elements: List[Pattern] = []
             while not self._check(TokenType.RBRACKET) and not self._is_at_end():
                 elements.append(self._parse_pattern())
                 if not self._match(TokenType.COMMA):
@@ -583,7 +624,7 @@ class Parser:
         
         # Tuple pattern: (pattern1, pattern2, ...)
         if self._match(TokenType.LPAREN):
-            elements = []
+            elements: List[Pattern] = []
             while not self._check(TokenType.RPAREN) and not self._is_at_end():
                 elements.append(self._parse_pattern())
                 if not self._match(TokenType.COMMA):
@@ -593,7 +634,7 @@ class Parser:
         
         # Dict pattern: {key1: pattern1, key2: pattern2, ...}
         if self._match(TokenType.LBRACE):
-            entries = []
+            entries: List[tuple[str, Pattern]] = []
             while not self._check(TokenType.RBRACE) and not self._is_at_end():
                 # Parse key (must be string or identifier)
                 if self._match(TokenType.STRING):

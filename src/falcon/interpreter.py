@@ -14,7 +14,7 @@ Updated to support:
 """
 from __future__ import annotations
 
-from typing import Any, List, Optional, Callable
+from typing import Any, Callable, List, Optional
 from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     ListLiteral, TupleLiteral, DictLiteral, SetLiteral, ArrayLiteral, Subscript,
@@ -34,7 +34,7 @@ class InterpreterError(Exception):
 class _ReturnSignal(Exception):
     def __init__(self, value: Any):
         super().__init__("return signal")
-        self.value = value
+        self.value: Any = value
 
 
 class _BreakSignal(Exception):
@@ -47,11 +47,21 @@ class Function:
     Runtime function wrapper for AST-defined functions (used by interpreter).
     The compiler/VM may produce different callable objects; this is the interpreter's.
     """
-    def __init__(self, name: Optional[str], params: List[str], body: BlockStmt, closure: Environment):
-        self.name = name
-        self.params = params
-        self.body = body
-        self.closure = closure
+    def __init__(
+        self,
+        name: Optional[str],
+        params: List[str],
+        body: BlockStmt,
+        closure: Environment,
+        param_types: Optional[dict[str, str]] = None,
+        return_type: Optional[str] = None,
+    ) -> None:
+        self.name: Optional[str] = name
+        self.params: List[str] = params
+        self.body: BlockStmt = body
+        self.closure: Environment = closure
+        self.param_types: dict[str, str] = param_types or {}
+        self.return_type: Optional[str] = return_type
 
     def call(self, interpreter: "Interpreter", args: List[Any]) -> Any:
         if len(args) != len(self.params):
@@ -62,7 +72,7 @@ class Function:
         local.is_function_scope = True
         local.is_function_scope = True
         for name, val in zip(self.params, args):
-            local.define(name, val)
+            local.define(name, val, type_name=self.param_types.get(name))
         if self.name:
             # bind the function itself in its local scope (allow recursion)
             # make the function binding const to avoid accidental overwrite inside its own scope
@@ -71,17 +81,22 @@ class Function:
             for stmt in self.body.body:
                 interpreter._execute(stmt, local)
         except _ReturnSignal as rs:
+            if self.return_type is not None:
+                interpreter._assert_type(rs.value, self.return_type, "return value")
             return rs.value
+        if self.return_type is not None:
+            interpreter._assert_type(None, self.return_type, "return value")
         return None
 
 
 class Interpreter:
-    def __init__(self):
-        self.globals = Environment()
+    def __init__(self) -> None:
+        self.globals: Environment = Environment()
         for name, fn in BUILTINS.items():
             self.globals.define(name, fn, is_const=True)
+        self._loop_depth: int = 0
         self._loop_depth = 0
-        self._loop_depth = 0
+        self._expected_return_types: List[Optional[str]] = []
     def _function_env(self, env: Environment) -> Environment:
         """Return the nearest function-scope environment (or globals)."""
         while env is not None and not getattr(env, "is_function_scope", False):
@@ -126,7 +141,12 @@ class Interpreter:
         if isinstance(stmt, LetStmt):
             value = self._eval(stmt.initializer, env) if stmt.initializer is not None else None
             target_env = self._function_env(env) if getattr(stmt, "is_var", False) else env
-            target_env.define(stmt.name, value, is_const=getattr(stmt, "is_const", False))
+            target_env.define(
+                stmt.name,
+                value,
+                is_const=getattr(stmt, "is_const", False),
+                type_name=stmt.type_ann.name if stmt.type_ann is not None else None,
+            )
             return
 
         if isinstance(stmt, BlockStmt):
@@ -229,12 +249,23 @@ class Interpreter:
             return
 
         if isinstance(stmt, FunctionStmt):
-            func = Function(stmt.name, stmt.params, stmt.body, env)
+            func = Function(
+                stmt.name,
+                stmt.params,
+                stmt.body,
+                env,
+                param_types={k: v.name for k, v in stmt.param_types.items()},
+                return_type=stmt.return_type.name if stmt.return_type else None,
+            )
             env.define(stmt.name, func)
             return
 
         if isinstance(stmt, ReturnStmt):
             val = self._eval(stmt.value, env) if stmt.value is not None else None
+            if self._expected_return_types:
+                expected = self._expected_return_types[-1]
+                if expected is not None:
+                    self._assert_type(val, expected, "return value")
             raise _ReturnSignal(val)
 
         # ---------------- MatchStmt ----------------
@@ -438,7 +469,14 @@ class Interpreter:
 
         if isinstance(expr, FunctionExpr):
             # Create a Function object capturing current env as closure
-            return Function(expr.name, expr.params, expr.body, env)
+            return Function(
+                expr.name,
+                expr.params,
+                expr.body,
+                env,
+                param_types={k: v.name for k, v in expr.param_types.items()},
+                return_type=expr.return_type.name if expr.return_type else None,
+            )
 
         if isinstance(expr, Call):
             callee_val = self._eval(expr.callee, env)
@@ -446,7 +484,11 @@ class Interpreter:
 
             # If callee_val is our Function object
             if isinstance(callee_val, Function):
-                return callee_val.call(self, args)
+                self._expected_return_types.append(callee_val.return_type)
+                try:
+                    return callee_val.call(self, args)
+                finally:
+                    self._expected_return_types.pop()
 
             # If callee_val is Promise factory/class (callable)
             if callee_val is Promise:
@@ -519,8 +561,13 @@ class Interpreter:
             return len(value) > 0
         return True
 
+    def _assert_type(self, value: Any, type_name: str, context: str) -> None:
+        if not Environment._value_matches_type(value, type_name):
+            got = type(value).__name__
+            raise InterpreterError(f"Type mismatch for {context}: expected {type_name}, got {got}")
+
     # ---------------- VM/interoperability helper ----------------
-    def call_function_ast(self, func_node, args: List[Any]) -> Any:
+    def call_function_ast(self, func_node: Any, args: List[Any]) -> Any:
         """
         Call an AST-backed function node from VM code. The VM/Compiler should
         arrange for func_node to contain `.params` and `.body`, and ideally a
@@ -539,7 +586,7 @@ class Interpreter:
         name = getattr(func_node, "name", None)
         if name:
             # provide a callable that routes back to interpreter call
-            def _recur_wrapper(*a):
+            def _recur_wrapper(*a: Any) -> Any:
                 return self.call_function_ast(func_node, list(a))
             local.define(name, _recur_wrapper, is_const=True)
 

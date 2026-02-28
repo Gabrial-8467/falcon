@@ -11,15 +11,15 @@ import sys
 import pathlib
 import traceback
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 from .lexer import Lexer, LexerError
 from .parser import Parser, ParseError
 from .interpreter import Interpreter, InterpreterError
 from .compiler import Compiler, Code
-from typing import Any, Dict, List, Tuple
 from .vm import VM, VMRuntimeError
 from .builtins import BUILTINS
+from .type_checker import TypeChecker, TypeCheckError
 
 
 # --------------------------------------------
@@ -37,7 +37,7 @@ def read_source(path: str) -> str:
 
 
 
-def pretty_print_compiled(code):
+def pretty_print_compiled(code: Code) -> None:
     try:
         print(f"Compiled module: {code.name}")
         print(f"  consts: {len(getattr(code, 'consts', []))}")
@@ -47,7 +47,7 @@ def pretty_print_compiled(code):
         print("  (unable to inspect compiled code)")
 
 
-def dump_vm_debug(vm: VM):
+def dump_vm_debug(vm: VM) -> None:
     print("=== VM DEBUG SNAPSHOT ===")
     try:
         print("VM globals (sample):")
@@ -96,7 +96,8 @@ def run_file(path: str) -> int:
 
     # Timers
     lex_time = parse_time = compile_time = 0.0 if not cached else 0.0
-    vm_time = interp_time = None
+    vm_time: Optional[float] = None
+    interp_time: Optional[float] = None
     total_start = time.perf_counter()
 
     if not cached:
@@ -108,6 +109,7 @@ def run_file(path: str) -> int:
         t0 = time.perf_counter()
         ast = Parser(tokens).parse()
         parse_time = time.perf_counter() - t0
+        TypeChecker().check(ast)
         # Compilation
         compiler = Compiler()
         t0 = time.perf_counter()
@@ -125,6 +127,7 @@ def run_file(path: str) -> int:
         # Need AST for interpreter fallback – re‑parse without timing
         tokens = Lexer(src).lex()
         ast = Parser(tokens).parse()
+        TypeChecker().check(ast)
 
     # Prepare VM
     vm = VM(verbose=False)
@@ -177,6 +180,9 @@ def run_file(path: str) -> int:
         print(f"  interp   : {interp_time:.6f}s")
         print(f"  total    : {total:.6f}s")
         return 0
+    except TypeCheckError as te:
+        print(f"{path}: Type error: {te}")
+        return 3
     except InterpreterError as ie:
         print(f"{path}: Runtime error: {ie}")
         traceback.print_exc()

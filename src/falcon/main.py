@@ -12,12 +12,13 @@ safe, line-wise interpreter with a REPL.
 from __future__ import annotations
 
 import ast
+import argparse
 import os
 import pathlib
 import readline
 import sys
 import traceback
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
 
 # package version (kept in sync with __init__ ideally)
 try:
@@ -27,7 +28,9 @@ except Exception:
 
 
 # Attempt to delegate to modern backend if present
-def _try_delegate():
+def _try_delegate() -> Tuple[
+    Optional[Callable[[str], int]], Optional[Callable[[], None]]
+]:
     try:
         from . import runner  # type: ignore
         from . import repl    # type: ignore
@@ -286,7 +289,7 @@ def execute_source(source: str, env: Optional[Dict[str, Any]] = None, filename: 
 _HISTFILE = os.path.expanduser("~/.falcon_history")
 
 
-def _setup_readline():
+def _setup_readline() -> None:
     try:
         readline.set_history_length(1000)
         if os.path.exists(_HISTFILE):
@@ -295,7 +298,7 @@ def _setup_readline():
         pass
 
 
-def _save_readline():
+def _save_readline() -> None:
     try:
         readline.write_history_file(_HISTFILE)
     except Exception:
@@ -385,8 +388,7 @@ def start_repl() -> None:
 
 # ---------------- CLI entrypoint ----------------
 
-def _build_argparser():
-    import argparse
+def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="falcon", description="Falcon language (legacy runner)")
     p.add_argument("file", nargs="?", help="Run a .fn source file")
     p.add_argument("-i", "--repl", action="store_true", help="Start interactive REPL")
