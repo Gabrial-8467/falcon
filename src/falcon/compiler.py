@@ -173,6 +173,14 @@ class Compiler:
         op, _ = self.instructions[idx]
         self.instructions[idx] = (op, target)
 
+    def _alloc_local(self, name: str) -> int:
+        if name in self.locals:
+            return self.locals[name]
+        idx = self.next_local
+        self.locals[name] = idx
+        self.next_local += 1
+        return idx
+
     def _peephole_optimize(self, code: Code) -> Code:
         """Very simple peephole optimizer.
         Currently removes redundant LOAD_CONST None followed by POP (no‑op).
@@ -193,13 +201,6 @@ class Compiler:
             i += 1
         # Return new Code object preserving metadata
         return Code(code.name, optimized_insts, code.consts, code.nlocals, code.argcount)
-
-        if name in self.locals:
-            return self.locals[name]
-        idx = self.next_local
-        self.locals[name] = idx
-        self.next_local += 1
-        return idx
 
     # =====================
     # FAST LOOP DETECTION

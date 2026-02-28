@@ -25,7 +25,15 @@ from .ast_nodes import (
     DictPattern, OrPattern, WildcardPattern, CaseArm, MatchExpr, MatchStmt
 )
 from .env import Environment
-from .builtins import BUILTINS, Promise, RuntimeDict, RuntimeSet
+from .builtins import (
+    BUILTINS,
+    Promise,
+    RuntimeDict,
+    RuntimeList,
+    RuntimeSet,
+    RuntimeTuple,
+    FixedArray,
+)
 
 class InterpreterError(Exception):
     pass
@@ -95,7 +103,6 @@ class Interpreter:
         for name, fn in BUILTINS.items():
             self.globals.define(name, fn, is_const=True)
         self._loop_depth: int = 0
-        self._loop_depth = 0
         self._expected_return_types: List[Optional[str]] = []
     def _function_env(self, env: Environment) -> Environment:
         """Return the nearest function-scope environment (or globals)."""
@@ -323,8 +330,6 @@ class Interpreter:
             return RuntimeSet(set(self._eval(e, env) for e in expr.elements))
         if isinstance(expr, ArrayLiteral):
             size = self._eval(expr.size_expr, env)
-            # Use FixedArray defined in builtins (import later)
-            from .builtins import FixedArray
             return FixedArray(int(size))
         if isinstance(expr, Subscript):
             base_val = self._eval(expr.base, env)

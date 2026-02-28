@@ -236,6 +236,28 @@ Hello, Falcon!
 
 ---
 
+# ▶ Building Windows .exe / Setup
+
+Build standalone CLI executable:
+
+```powershell
+.\scripts\build_exe.ps1
+```
+
+Output:
+- `dist/falcon.exe`
+
+Build installer (`falcon-setup-x64.exe`) using Inno Setup 6:
+
+```powershell
+.\scripts\build_setup.ps1
+```
+
+Output:
+- `dist/falcon-setup-x64.exe`
+
+---
+
 # 📂 Project Structure  
 
 ```
