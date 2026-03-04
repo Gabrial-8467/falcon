@@ -13,7 +13,7 @@ The parser uses PREC to decide how to climb-precedence when parsing binary expre
 from __future__ import annotations
 
 # Precedence levels inspired by C/JS operator precedence,
-# but simplified for the Falcon prototype.
+# but simplified for the Falcon language.
 # Larger number means the operator binds tighter.
 PREC: dict[str, int] = {
     "||": 1,

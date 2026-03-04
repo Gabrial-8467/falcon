@@ -1,9 +1,9 @@
 # 🦅 Falcon Language Charter
 
 Falcon is a lightweight, expressive programming language designed for clarity, speed, and ease of implementation.
-This charter defines the **core goals**, **design principles**, and **initial scope** of the Falcon prototype.
+This charter defines the **core goals**, **design principles**, and **scope** of the Falcon language.
 
-Falcon begins as a **simple interpreter implemented in Python**, with the long-term goal of evolving into a modern scripting language with async capabilities and a bytecode VM.
+Falcon begins as a **simple interpreter implemented in Python**, with the goal of being a modern scripting language with async capabilities and a bytecode VM.
 
 ---
 
@@ -21,7 +21,7 @@ Falcon should feel intuitive to beginners yet flexible enough for advanced devel
 
 ---
 
-## 🧭 Core Goals (Prototype Phase)
+## 🧭 Core Goals
 
 1. **Readable syntax** inspired by modern scripting languages.
 2. **Small, understandable implementation** suitable for learning and experimentation.
@@ -30,11 +30,11 @@ Falcon should feel intuitive to beginners yet flexible enough for advanced devel
 5. **Interactive REPL** for fast feedback and prototyping.
 6. **Deterministic, easy-to-extend interpreter** written in Python.
 
-The prototype’s purpose is not performance — it's **clarity** and **correctness**.
+The language's purpose is **clarity** and **correctness**.
 
 ---
 
-## 📐 Design Principles
+## Design Principles
 
 Falcon’s design is guided by these principles:
 
@@ -60,7 +60,7 @@ New programmers should be able to read and write Falcon comfortably.
 
 ---
 
-## 📦 Prototype Feature Scope
+## 📦 Feature Scope
 
 ### Syntax & Semantics
 
@@ -87,7 +87,7 @@ New programmers should be able to read and write Falcon comfortably.
 
 ---
 
-## 🚫 Out-of-Scope (for Prototype)
+## 🚫 Out-of-Scope
 
 These features are **planned but not included yet**:
 
@@ -100,7 +100,7 @@ These features are **planned but not included yet**:
 * Bytecode compiler & VM
 * Optimizations / JIT
 
-These will be added incrementally after the prototype stabilizes.
+These will be added incrementally as the language evolves.
 
 ---
 
@@ -147,6 +147,6 @@ Falcon aims to mature into a full-featured scripting language with:
 * Bytecode VM with optimizations
 * Developer tools: formatter, LSP server, REPL debugger
 
-The prototype lays the foundation—every feature will grow from this base.
+The implementation lays the foundation—every feature will grow from this base.
 
 ---

@@ -2,12 +2,12 @@
 Falcon Programming Language Package
 -----------------------------------
 
-This package contains the JS-like Falcon language implementation (prototype).
+This package contains the JS-like Falcon language implementation.
 
 Design rules:
 - Importing this package MUST have no side effects
 - Executable modules (repl, runner) are imported lazily
-- Backward compatibility with older prototypes is preserved
+- Backward compatibility with older versions is preserved
 """
 
 from __future__ import annotations

@@ -17,14 +17,14 @@
 # 🦅 Falcon — A Modern Lightweight Programming Language  
 **Expressive. Hackable. Built for experiments and real projects.**
 
-Falcon is a **small, modern programming language** designed to be:
+Falcon is a **modern, production-ready programming language** designed to be:
 
 - 🧠 **Easy to learn** (clean syntax, predictable semantics)  
 - ⚡ **hybrid Compiler + VM + Interpreter** execution model  
 - 🧱 **Modular & extensible** (clean compiler architecture)  
 - 🦾 **Capable** (closures, loops, functions, expressions, built-ins)
 
-This repository contains the full Falcon **prototype implementation**, including:
+This repository contains the complete Falcon implementation, including:
 
 - **Lexer** - Tokenizes Falcon source code
 - **Parser → AST** - Builds abstract syntax tree from tokens  
@@ -35,7 +35,7 @@ This repository contains the full Falcon **prototype implementation**, including
 - **Built-in functions** - Core runtime library (including `show`, `console.log`, regex functions)
 - **Sample `.fn` programs** - Comprehensive examples  
 
-Falcon is actively evolving toward a **production-grade scripting language** with modules, async, optimized bytecode, and an ahead-of-time compiler.
+Falcon is actively developed as a **production-grade scripting language** with modules, async, optimized bytecode, and an ahead-of-time compiler.
 
 ## Custom Easy Syntax (Recommended)
 
@@ -68,7 +68,7 @@ Keyword aliases:
 
 ---
 
-# ✨ Highlights (Prototype v0.3.0)
+# ✨ Highlights (v1.0.0)
 
 ### ✔ Modern JavaScript-like Syntax  
 ```falcon
@@ -191,7 +191,7 @@ This gives you the **speed of compiled bytecode** with the **flexibility of inte
 
 ---
 
-# 📦 Installation (Development Mode)
+# 📦 Installation
 
 Clone:
 
@@ -209,14 +209,14 @@ myenv\Scripts\activate  # Windows
 source myenv/bin/activate
 ```
 
-Install dev dependencies (optional):
+Install dependencies (optional):
 
 ```bash
 pip install -r requirements.txt
 ```
 
 ---
-# ▶ Installing Build Dependencies
+# ▶ Install Falcon
 
 ```bash
 pip install -e .
@@ -231,7 +231,7 @@ python -m falcon.repl
 Example:
 
 ```bash
-Falcon REPL — v0.3.0  
+Falcon REPL — v1.0.0  
 falcon> var x := 5;
 falcon> x * 2
 10
@@ -322,175 +322,7 @@ The formatter ensures consistent code structure across all Falcon programs while
 
 ---
 
-# 📦 Package Manager
-
-Falcon includes a **complete package manager** for installing, creating, and managing Falcon packages.
-
-## Commands
-
-### FPM - Falcon Package Manager
-```bash
-# Install packages
-fpm install package-name
-fpm i package-name
-
-# List installed packages
-fpm list
-
-# Show package information
-fpm info package-name
-
-# Uninstall packages
-fpm uninstall package-name
-fpm un package-name
-
-# Create new packages
-fpm create package-name
-```
-
-### Traditional Interface
-```bash
-# Install from local directory
-falcon pkg install ./my-package
-
-# Install from archive
-falcon pkg install my-package.tar.gz
-
-# Install from URL
-falcon pkg install https://github.com/user/repo/releases/download/v1.0.0/package.tar.gz
-```
-
-### Package Management
-```bash
-# List installed packages
-falcon pkg list
-
-# Search packages
-falcon pkg list --search <query>
-
-# Show package information
-falcon pkg info <package-name>
-
-# Uninstall package
-falcon pkg uninstall <package-name>
-```
-
-### Package Creation
-```bash
-# Create new package
-falcon pkg create my-package --description "My awesome package" --author "Your Name"
-
-# This creates:
-my-package/
-├── falcon.pkg      # Package metadata
-└── lib/            # Package source files
-```
-
-## Package Structure
-
-A Falcon package contains:
-
-```
-my-package/
-├── falcon.pkg      # JSON metadata (name, version, dependencies, etc.)
-├── lib/            # Package source files (.fn files)
-├── examples/       # Usage examples (optional)
-└── README.md       # Package documentation (optional)
-```
-
-## Metadata Format
-
-```json
-{
-  "name": "package-name",
-  "version": "1.0.0", 
-  "description": "Package description",
-  "author": "Author Name",
-  "license": "MIT",
-  "dependencies": {
-    "other-package": ">=1.0.0"
-  },
-  "main": "main-module",
-  "exports": ["function1", "function2"]
-}
-```
-
-## Features
-
-- **Multiple sources**: Install from directories, archives, or URLs
-- **Dependency resolution**: Automatic dependency checking and conflict detection
-- **Semantic versioning**: Version constraint support (>=, <=, >, <, exact)
-- **Package registry**: Local registry with checksums and metadata
-- **CLI integration**: Full command-line interface with `falcon pkg`
-- **Development tools**: Package creation scaffolding and templates
-- **Modular design**: Packages remain separate from core language
-
-## Storage
-
-Packages are installed in `.falcon/packages/` with a local registry in `.falcon/registry.json`. This keeps the core Falcon language minimal while allowing rich package ecosystem growth.
-
-## Getting Started
-
-### Quick Start with FPM (Recommended)
-```bash
-# Create a new package
-fpm create my-awesome-package --author "Your Name"
-
-# Install a package
-fpm install my-awesome-package
-fpm i my-awesome-package              # short form
-
-# List all installed packages
-fpm list
-
-# Show package details
-fpm info my-awesome-package
-
-# Uninstall a package
-fpm uninstall my-awesome-package
-fpm un my-awesome-package           # short form
-```
-
-### Traditional Interface
-```bash
-# Create a new package
-falcon pkg create my-awesome-package --author "Your Name"
-
-# Install a package from local directory
-falcon pkg install ./my-awesome-package
-
-# List all installed packages
-falcon pkg list
-
-# Show package details
-falcon pkg info my-awesome-package
-```
-
----
-
-# ▶ Building Windows .exe / Setup
-
-Build standalone CLI executable:
-
-```powershell
-.\scripts\build_exe.ps1
-```
-
-Output:
-- `dist/falcon.exe`
-
-Build installer (`falcon-setup-x64.exe`) using Inno Setup 6:
-
-```powershell
-.\scripts\build_setup.ps1
-```
-
-Output:
-- `dist/falcon-setup-x64.exe`
-
----
-
-# 📂 Project Structure  
+# 📂 Project Architecture  
 
 ```
 falcon/
@@ -503,7 +335,7 @@ falcon/
 ├── src/                     # Source code directory
 │   ├── falcon/              # Main language package
 │   │   ├── __init__.py      # Package initialization and entry points
-│   │   ├── main.py          # Legacy CLI interface (fallback)
+│   │   ├── main.py          # CLI interface
 │   │   ├── lexer.py         # Tokenizer: converts source text to tokens
 │   │   ├── tokens.py        # Token types and Token class definitions
 │   │   ├── parser.py        # Parser: builds AST from token stream
@@ -530,6 +362,7 @@ falcon/
 │   │   │   └── resolver.py   # Dependency resolution
 │   │   ├── repl.py          # REPL: interactive development environment
 │   │   ├── runner.py        # File runner: executes .fn programs
+│   │   ├── type_checker.py # Type system and runtime type checking
 │   │   └── utils/          # Utility modules
 │   │       ├── __init__.py
 │   │       ├── errors.py      # Custom exception classes
@@ -909,9 +742,9 @@ show("Promise scheduled.");
 
 ---
 
-# 🛣 Roadmap (Active Development)
+# 🛣 Development Roadmap
 
-### 🚀 Current Language Features  
+### 🚀 Implemented Features  
 - [x] **Core syntax** (variables, functions, control flow)
 - [x] **Variable declarations** (var, let, const with := and =)
 - [x] **Function types** (declarations, expressions, first-class functions)
@@ -929,18 +762,18 @@ show("Promise scheduled.");
 - [x] **Language-level type annotations** (runtime-checked declarations, params, returns)
 - [x] **Error handling** (try/catch/throw)
 
-### 📋 Planned Features  
+### 📋 Future Enhancements  
 - [ ] **Async / await** (stub implemented)
 - [ ] **Modules & imports**
 - [ ] **Classes & objects**
 - [ ] **Generators**  
 
-### ⚙ Runtime  
+### ⚙ Runtime Optimizations  
 - [ ] Optimizing bytecode VM  
 - [ ] JIT compilation (optional)  
 - [ ] Debugger + stack traces  
 
-### 🛠 Tooling  
+### 🛠 Development Tooling  
 - [x] **Passive built-in formatter** — AST-based code normalization (automatic, no CLI command needed)
 - [ ] LSP server for VS Code  
 - [x] **Package manager** — Install, manage, and create Falcon packages with npm/pip style interface
@@ -969,6 +802,6 @@ See `LICENSE` for details.
 ---
 
 # 🦅 Falcon — “Small language. Big possibilities.”
-Falcon is built to grow — from a prototype VM to a complete, scripting language.
+Falcon is built to grow — from a lightweight VM to a complete, scripting language.
   
 
