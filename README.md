@@ -37,7 +37,7 @@ This repository contains the complete Falcon implementation, including:
 
 Falcon is actively developed as a **production-grade scripting language** with async, optimized bytecode, and an ahead-of-time compiler.
 
-## Custom Easy Syntax (Recommended)
+## Easy syntax
 
 Falcon supports an easy custom style used across current examples:
 
