@@ -72,13 +72,13 @@ Keyword aliases:
 
 ### ✔ Modern JavaScript-like Syntax  
 ```falcon
-// Variable declarations with := and =
-var x := 10;
-let y := 20;  // `let` works as an alias for `var`
+// Variable declarations with =
+set x = 10;
+set y = 20;  // set works as an alias for set
 const z = 30;  // Constants
 
 // Functions with clean syntax
-function add(a, b) { return a + b; }
+fn add(a, b) { give a + b; }
 show(add(x, 20));
 
 // Comments: // line comments and /* block comments */
@@ -86,15 +86,15 @@ show(add(x, 20));
 
 ### ✔ First-Class Closures & Lexical Scoping  
 ```falcon
-function makeCounter(start) {
-    var count := start;
-    return function() {
+fn makeCounter(start) {
+    set count = start;
+    give fn() {
         count = count + 1;
-        return count;
+        give count;
     };
 }
 
-var next := makeCounter(0);
+set next = makeCounter(0);
 show(next());  // 1
 show(next());  // 2
 show(next());  // 3
@@ -103,15 +103,15 @@ show(next());  // 3
 ### ✔ Rich Collection Types & Member Access
 ```falcon
 // List (dynamic array)
-var lst := [1, 2, 3];
+set lst = [1, 2, 3];
 // Tuple (immutable)
-var tpl := (1, 2, 3);
+set tpl = (1, 2, 3);
 // Dictionary / Object
-var obj := { name: "Falcon", version: 0.3 };
+set obj = { name: "Falcon", version: 0.3 };
 // Set
-var s := set{1, 2, 3};
+set s = set{1, 2, 3};
 // Array (fixed size)
-var arr := array[5];
+set arr = array[5];
 
 // Subscript and member access
 show(lst[0]);        // 1
@@ -122,8 +122,8 @@ show(obj["version"]); // 0.3
 ### ✔ Comparison Operations
 ```falcon
 // Equality operators
-var a := 10;
-var b := 20;
+set a = 10;
+set b = 20;
 
 show(a == b);   // false (equal to)
 show(a != b);   // true  (not equal to)
@@ -135,17 +135,17 @@ show(a > b);    // false (greater than)
 show(a >= b);   // false (greater than or equal to)
 
 // In conditional statements
-if (a < b) {
+when (a < b) {
     show("a is less than b");
-} else if (a > b) {
+} else when (a > b) {
     show("a is greater than b");
 } else {
     show("a equals b");
 }
 
 // In pattern matching guards
-function classify_number(n) {
-    return match n {
+fn classify_number(n) {
+    give match n {
         case x if x < 0: "negative";
         case x if x == 0: "zero";
         case x if x > 0: "positive";
@@ -162,18 +162,18 @@ function classify_number(n) {
 ### ✔ Advanced Control Flow
 ```falcon
 // Traditional for-loop with step
-for var i := 1 to 10 step 2 {
+for set i = 1 to 10 step 2 {
     show("Count:", i);
 }
 
 // Infinite loops with break/return
 loop {
     show("Running...");
-    if (some_condition) { break; }
+    when (some_condition) { break; }
 }
 
 // While loops
-var x := 0;
+set x = 0;
 while (x < 5) {
     show(x);
     x = x + 1;
@@ -232,10 +232,10 @@ Example:
 
 ```bash
 Falcon REPL — v1.0.0  
-falcon> var x := 5;
+falcon> set x = 5;
 falcon> x * 2
 10
-falcon> function greet(name) { show("Hello, " + name + "!"); }
+falcon> fn greet(name) { show("Hello, " + name + "!"); }
 falcon> greet("Falcon")
 Hello, Falcon!
 falcon> .quit
@@ -295,20 +295,20 @@ source code → lexer → parser → AST → formatter normalization → interpr
 
 Input code with inconsistent formatting:
 ```falcon
-function add(a,b){return a+b}
-var x:=5
-var y:=10
+fn add(a,b){give a+b}
+set x=5
+set y=10
 show(add(x,y))
 ```
 
 Gets automatically normalized during execution:
 ```falcon
-function add(a, b) {
-    return a + b
+fn add(a, b) {
+    give a + b
 }
 
-var x := 5
-var y := 10
+set x = 5
+set y = 10
 show(add(x, y))
 ```
 
@@ -398,8 +398,8 @@ falcon/
 show("Hello, Falcon!");
 
 // Simple function
-function greet(name) {
-    return "Hello, " + name + "!";
+fn greet(name) {
+    give "Hello, " + name + "!";
 }
 
 show(greet("World"));
@@ -444,22 +444,21 @@ show("x updated to:", x);
 
 ### **type_annotations.fn** - Language-level Type Annotations
 ```falcon
-var count: int := 3;
-var title: string := "Falcon";
+set count: int = 3;
+set title: string = "Falcon";
 const enabled: bool = true;
 
-function add(a: int, b: int): int {
-    return a + b;
+fn add(a: int, b: int): int {
+    give a + b;
 }
 
-function label(names: list[string]): string {
-    return "users:" + names[0];
+fn banner(name: string): string {
+    give "Hello, " + name;
 }
 
-var maybeName: string | null := "Ava";
 show(add(count, 9));
-show(label(["Falcon"]));
-show(maybeName);
+show(banner(title));
+show(enabled);
 ```
 
 ### **functions.fn** - Function Types & Patterns
@@ -515,17 +514,17 @@ show("!true =", !true);                 // false
 ### **collections.fn** - Lists, Tuples, Dictionaries, Sets, Arrays
 ```falcon
 // List (dynamic array)
-var fruits := ["apple", "banana", "orange"];
+set fruits = ["apple", "banana", "orange"];
 show("List:", fruits);
 show("First fruit:", fruits[0]);
 
 // Tuple (immutable)
-var coordinates := (10, 20, 30);
+set coordinates = (10, 20, 30);
 show("Tuple:", coordinates);
 show("Second coordinate:", coordinates[1]);
 
 // Dictionary / Object
-var person := {
+set person = {
     name: "Alice",
     age: 25,
     city: "New York"
@@ -535,26 +534,26 @@ show("Name:", person.name);
 show("Age:", person["age"]);
 
 // Set
-var numbers := set{1, 2, 3, 4, 5};
+set numbers = set{1, 2, 3, 4, 5};
 show("Set:", numbers);
 
 // Array (fixed size)
-var scores := array[5];
-scores[0] := 95;
-scores[1] := 87;
+set scores = array[5];
+scores[0] = 95;
+scores[1] = 87;
 show("Array:", scores);
 ```
 
 ### **control_flow.fn** - If/Else, Loops, Break
 ```falcon
 // If/else statements
-function checkNumber(n) {
-    if (n > 0) {
-        return "Positive";
-    } else if (n < 0) {
-        return "Negative";
+fn checkNumber(n) {
+    when (n > 0) {
+        give "Positive";
+    } else when (n < 0) {
+        give "Negative";
     } else {
-        return "Zero";
+        give "Zero";
     }
 }
 
@@ -562,28 +561,28 @@ show("checkNumber(5) =", checkNumber(5));
 show("checkNumber(-3) =", checkNumber(-3));
 
 // For loops with different steps
-for i := 1 to 5 step 1 {
+for set i = 1 to 5 step 1 {
     show("Count up:", i);
 }
 
-for j := 10 to 1 step -2 {
+for set j = 10 to 1 step -2 {
     show("Count down by 2:", j);
 }
 
 // While loop
-var counter := 0;
+set counter = 0;
 while (counter < 3) {
     show("While iteration:", counter);
-    counter := counter + 1;
+    counter = counter + 1;
 }
 
 // Controlled infinite loop
-function limitedLoop(maxIterations) {
-    var i := 0;
+fn limitedLoop(maxIterations) {
+    set i = 0;
     loop {
         show("Loop iteration:", i);
-        i := i + 1;
-        if (i >= maxIterations) { break; }
+        i = i + 1;
+        when (i >= maxIterations) { break; }
     }
 }
 limitedLoop(3);
@@ -592,11 +591,11 @@ limitedLoop(3);
 ### **factorial.fn** - Recursive Functions
 ```falcon
 // Classic recursive factorial implementation
-function fact(n) {
-    if (n == 0) { 
-        return 1; 
+fn fact(n) {
+    when (n == 0) { 
+        give 1; 
     }
-    return n * fact(n - 1);
+    give n * fact(n - 1);
 }
 
 // Test factorial function
@@ -608,30 +607,30 @@ show("10! =", fact(10));  // 3628800
 ### **closure.fn** - Lexical Scoping & Closures
 ```falcon
 // Simple counter closure
-function makeCounter() {
-    var c = 0;
-    function inc() {
+fn makeCounter() {
+    set c = 0;
+    fn inc() {
         c = c + 1;
-        return c;
+        give c;
     }
-    return inc;
+    give inc;
 }
 
 // Create and use counter
-var counter = makeCounter();
+set counter = makeCounter();
 show("First call:", counter());  // 1
 show("Second call:", counter()); // 2
 show("Third call:", counter());  // 3
 
 // Advanced closure with parameters
-function makeAdder(x) {
-    return function(y) {
-        return x + y;
+fn makeAdder(x) {
+    give fn(y) {
+        give x + y;
     };
 }
 
-var add5 = makeAdder(5);
-var add10 = makeAdder(10);
+set add5 = makeAdder(5);
+set add10 = makeAdder(10);
 show("5 + 3 =", add5(3));    // 8
 show("10 + 7 =", add10(7));  // 17
 ```
@@ -639,29 +638,29 @@ show("10 + 7 =", add10(7));  // 17
 ### **loop.fn** - Loop Constructs
 ```falcon
 // For loop with step (Falcon style)
-for i := 1 to 5 step 1 {
+for set i = 1 to 5 step 1 {
     show("for-loop value:", i);
 }
 
 // For loop with custom step
-for j := 0 to 10 step 2 {
+for set j = 0 to 10 step 2 {
     show("even numbers:", j);
 }
 
 // While loop
-var count = 0;
+set count = 0;
 while (count < 3) {
     show("while loop:", count);
     count = count + 1;
 }
 
 // Infinite loop with break condition
-function controlledLoop() {
-    var k = 0;
+fn controlledLoop() {
+    set k = 0;
     loop {
         show("infinite loop:", k);
         k = k + 1;
-        if (k >= 3) { break; }
+        when (k >= 3) { break; }
     }
 }
 controlledLoop();
@@ -669,8 +668,8 @@ controlledLoop();
 
 ### **match_guards.fn** - Pattern Matching with Guards
 ```falcon
-function classifyUser(user) {
-    return match user {
+fn classifyUser(user) {
+    give match user {
         case { role: "admin", active: true, name: n }: "admin:" + n;
         case { role: "member", score: s } if s >= 90: "top-member";
         case { role: "member", score: s } if s >= 50: "member";
@@ -688,11 +687,11 @@ show(classifyUser({ foo: "bar" }));
 
 ### **error_handling.fn** - Custom try/catch/throw
 ```falcon
-function safeDivide(a, b) {
-    if (b == 0) {
+fn safeDivide(a, b) {
+    when (b == 0) {
         throw "division by zero";
     }
-    return a / b;
+    give a / b;
 }
 
 try {
@@ -708,23 +707,23 @@ try {
 show("Starting async stub...");
 
 // Create and resolve a promise
-var p = Promise.resolve(42);
+set p = Promise.resolve(42);
 
 // Chain promise operations
-p.then(function(x) {
+p.then(fn(x) {
     show("Promise resolved with:");
     show(x);
-    return x * 2;
-}).then(function(doubled) {
+    give x * 2;
+}).then(fn(doubled) {
     show("Doubled value:", doubled);
 });
 
 // Promise constructor
-var p2 = Promise(function(resolve, reject) {
+set p2 = Promise(fn(resolve, reject) {
     resolve("Async operation complete!");
 });
 
-p2.then(function(msg) {
+p2.then(fn(msg) {
     show("Constructor promise:", msg);
 });
 
@@ -737,18 +736,18 @@ show("Promise scheduled.");
 
 ### 🚀 Implemented Features  
 - [x] **Core syntax** (variables, functions, control flow)
-- [x] **Variable declarations** (var, let, const with := and =)
+- [x] **Variable declarations** (set, const with =)
 - [x] **Function types** (declarations, expressions, first-class functions)
 - [x] **Collections** (lists, tuples, dictionaries, sets, arrays)
 - [x] **Closures & lexical scoping** (full closure support)
-- [x] **Control flow** (if/else, for, while, infinite loops)
+- [x] **Control flow** (when/else, for, while, infinite loops)
 - [x] **Member access & subscripting** (obj.property, obj[key], arr[index])
 - [x] **Built-in functions** (show, console.log, Promise API)
 - [x] **Comments** (// line comments and /* block comments */)
 - [x] **Arithmetic operations** (+, -, *, /, %)
 - [x] **Comparison operations** (==, !=, <, <=, >, >=)
 - [x] **Logical operations** (&&, ||, !)
-- [x] **Assignment operations** (=, :=)
+- [x] **Assignment operations** (=)
 - [x] **Pattern matching** (native syntax with variable binding, guards, OR patterns)
 - [x] **Language-level type annotations** (runtime-checked declarations, params, returns)
 - [x] **Error handling** (try/catch/throw)

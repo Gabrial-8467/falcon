@@ -26,10 +26,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/gabrialdeora/falcon-lang"
-Repository = "https://github.com/gabrialdeora/falcon-lang"
-Issues = "https://github.com/gabrialdeora/falcon-lang/issues"
-Changelog = "https://github.com/gabrialdeora/falcon-lang/releases"
+Homepage = "https://github.com/Gabrial-8467/falcon"
+Repository = "https://github.com/Gabrial-8467/falcon"
+Issues = "https://github.com/Gabrial-8467/falcon/issues"
+Changelog = "https://github.com/Gabrial-8467/falcon/releases"
 
 [project.scripts]
 falcon = "falcon.main:main"
