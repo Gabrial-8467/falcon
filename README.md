@@ -1,5 +1,5 @@
 <p align="center">
-<img src="assets\vyomm.png" alt="vyom Logo" width="700" height="300">
+<img src="assets\vyomm.png" alt="vyom Logo" width="500" height="300">
 </p>
 
 ---
