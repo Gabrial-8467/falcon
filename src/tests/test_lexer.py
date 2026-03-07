@@ -1,6 +1,6 @@
 import textwrap
-from falcon.lexer import Lexer, LexerError
-from falcon.tokens import TokenType
+from vyom.lexer import Lexer, LexerError
+from vyom.tokens import TokenType
 
 def test_basic_tokens():
     src = 'let x = 42; print "hi"; // comment\n/* block */'

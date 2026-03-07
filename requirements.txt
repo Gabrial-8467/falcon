@@ -5,6 +5,9 @@ click           # Clean and powerful CLI commands
 # --- Parsing / language tools ---
 lark            # Fast, flexible parser for building language grammars
 
+# --- Packaging for standalone executables ---
+pyinstaller     # Bundle vyom into standalone .exe files
+
 # --- Development tools ---
 black           # Code formatter
 isort           # Automatically sort imports

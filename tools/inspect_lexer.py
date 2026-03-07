@@ -6,21 +6,21 @@ import sys
 from pprint import pprint
 
 # adjust this import path if your project layout differs
-modname = "src.falcon.lexer"
+modname = "src.vyom.lexer"
 
 # Try several import styles to be robust
 spec = None
 mod = None
 try:
     # primary attempt
-    mod = importlib.import_module("src.falcon.lexer")
+    mod = importlib.import_module("src.vyom.lexer")
 except Exception as e:
-    print("Importing src.falcon.lexer failed:", e)
-    print("Trying to import falcon.lexer (alternate layout)...")
+    print("Importing src.vyom.lexer failed:", e)
+    print("Trying to import vyom.lexer (alternate layout)...")
     try:
-        mod = importlib.import_module("falcon.lexer")
+        mod = importlib.import_module("vyom.lexer")
     except Exception as e2:
-        print("Importing falcon.lexer failed too:", e2)
+        print("Importing vyom.lexer failed too:", e2)
         print("Give me the path to lexer.py if these both fail.")
         raise
 

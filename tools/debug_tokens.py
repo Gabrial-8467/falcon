@@ -1,5 +1,5 @@
-from src.falcon.lexer import Lexer
-from src.falcon.tokens import TokenType
+from src.vyom.lexer import Lexer
+from src.vyom.tokens import TokenType
 
 code = """
 loop {

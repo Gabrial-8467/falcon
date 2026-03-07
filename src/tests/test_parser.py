@@ -1,6 +1,6 @@
-from falcon.lexer import Lexer
-from falcon.parser import Parser, ParseError
-from falcon.ast_nodes import LetStmt, PrintStmt, ExprStmt, IfStmt, WhileStmt, BlockStmt, Variable, Literal
+from vyom.lexer import Lexer
+from vyom.parser import Parser, ParseError
+from vyom.ast_nodes import LetStmt, PrintStmt, ExprStmt, IfStmt, WhileStmt, BlockStmt, Variable, Literal
 
 def _parse(src):
     tokens = Lexer(src).lex()

@@ -1,12 +1,12 @@
 """
-Small helper tool to run Falcon example programs easily.
+Small helper tool to run Vyom example programs easily.
 
 Usage:
-    python tools/run_example.py examples/hello.fn
+    python tools/run_example.py examples/hello.vyom
     python tools/run_example.py hello
 
 If a bare name is given (e.g., "hello"), it automatically looks for:
-    examples/hello.fn
+    examples/hello.vyom
 """
 
 from __future__ import annotations
@@ -14,21 +14,21 @@ from __future__ import annotations
 import sys
 import pathlib
 
-# Allow importing the local falcon package without installing
+# Allow importing the local vyom package without installing
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from falcon.runner import run_file
+from vyom.runner import run_file
 
 
 def resolve_example(name: str) -> pathlib.Path:
     """
     Resolve input into an actual example path.
     Accepts either:
-      - full path: examples/hello.fn
-      - bare name: hello  -> examples/hello.fn
+      - full path: examples/hello.vyom
+      - bare name: hello  -> examples/hello.vyom
     """
     p = pathlib.Path(name)
 
@@ -36,9 +36,9 @@ def resolve_example(name: str) -> pathlib.Path:
     if p.exists():
         return p
 
-    # Try "examples/<name>.fn"
+    # Try "examples/<name>.vyom"
     example_dir = ROOT / "examples"
-    candidate = example_dir / f"{name}.fn"
+    candidate = example_dir / f"{name}.vyom"
     if candidate.exists():
         return candidate
 
@@ -47,7 +47,7 @@ def resolve_example(name: str) -> pathlib.Path:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python tools/run_example.py <example.fn | name>")
+        print("Usage: python tools/run_example.py <example.vyom | name>")
         sys.exit(1)
 
     target = sys.argv[1]

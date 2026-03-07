@@ -3,7 +3,7 @@ requires = ["setuptools>=69.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "falcon-lang"
+name = "vyom-lang"
 version = "1.0.0"
 description = "A modern programming language and interpreter."
 authors = [
@@ -26,13 +26,13 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Gabrial-8467/falcon"
-Repository = "https://github.com/Gabrial-8467/falcon"
-Issues = "https://github.com/Gabrial-8467/falcon/issues"
-Changelog = "https://github.com/Gabrial-8467/falcon/releases"
+Homepage = "https://github.com/Gabrial-8467/vyom"
+Repository = "https://github.com/Gabrial-8467/vyom"
+Issues = "https://github.com/Gabrial-8467/vyom/issues"
+Changelog = "https://github.com/Gabrial-8467/vyom/releases"
 
 [project.scripts]
-falcon = "falcon.main:main"
+vyom = "vyom.main:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

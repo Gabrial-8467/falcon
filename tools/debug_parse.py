@@ -1,7 +1,7 @@
 # tools/debug_parse.py
-from src.falcon.lexer import Lexer
-from src.falcon.parser import Parser
-from src.falcon.tokens import TokenType
+from src.vyom.lexer import Lexer
+from src.vyom.parser import Parser
+from src.vyom.tokens import TokenType
 
 code = """
 var i := 1;

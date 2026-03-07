@@ -2,8 +2,8 @@ import io
 import json
 import textwrap
 from contextlib import redirect_stdout
-from falcon.runner import run_source
-from falcon.interpreter import Interpreter, InterpreterError
+from vyom.runner import run_source
+from vyom.interpreter import Interpreter, InterpreterError
 
 def capture_run(src: str):
     buf = io.StringIO()

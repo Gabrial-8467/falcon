@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from falcon.runner import main
+from vyom.runner import main
 
 
 if __name__ == "__main__":

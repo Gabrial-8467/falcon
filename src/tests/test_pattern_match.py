@@ -3,7 +3,7 @@ import json
 import textwrap
 from contextlib import redirect_stdout
 
-from falcon.runner import run_source
+from vyom.runner import run_source
 
 
 def capture_run(src: str):
@@ -47,7 +47,7 @@ def test_regex_findall():
 
 def test_glob_match():
     src = """
-    let ok = globMatch('**/*.py', 'src/falcon/utils/pattern_match.py');
+    let ok = globMatch('**/*.py', 'src/vyom/utils/pattern_match.py');
     print ok;
     """
     rc, out = capture_run(src)

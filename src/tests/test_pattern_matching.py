@@ -2,7 +2,7 @@ import io
 import textwrap
 from contextlib import redirect_stdout
 
-from falcon.runner import run_source
+from vyom.runner import run_source
 
 
 def capture_run(src: str):

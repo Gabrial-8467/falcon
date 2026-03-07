@@ -1,5 +1,5 @@
 <p align="center">
-<img src="assets\fullfnlogo.png" alt="Falcon Logo" width="700" height="300">
+<img src="assets\vyomm.png" alt="vyom Logo" width="700" height="300">
 </p>
 
 ---
@@ -14,34 +14,34 @@
 ```
 ---
 
-# 🦅 Falcon — A Modern Lightweight Programming Language  
+# Vyom — A Modern Lightweight Programming Language  
 **Expressive. Hackable. Built for experiments and real projects.**
 
-Falcon is a **modern, production-ready programming language** designed to be:
+Vyom is a **modern, production-ready programming language** designed to be:
 
 - 🧠 **Easy to learn** (clean syntax, predictable semantics)  
 - ⚡ **hybrid Compiler + VM + Interpreter** execution model  
 - 🧱 **Modular & extensible** (clean compiler architecture)  
 - 🦾 **Capable** (closures, loops, functions, expressions, built-ins)
 
-This repository contains the complete Falcon implementation, including:
+This repository contains the complete Vyom implementation, including:
 
-- **Lexer** - Tokenizes Falcon source code
+- **Lexer** - Tokenizes Vyom source code
 - **Parser → AST** - Builds abstract syntax tree from tokens  
 - **Bytecode Compiler** - Compiles AST to optimized bytecode
 - **Stack-based Virtual Machine** - Executes bytecode efficiently
 - **Hybrid Interpreter** - Handles dynamic features and closures
 - **REPL** - Interactive development environment
 - **Built-in functions** - Core runtime library (including `show`, `console.log`, regex functions)
-- **Sample `.fn` programs** - Comprehensive examples  
+- **Sample `.vyom` programs** - Comprehensive examples  
 
-Falcon is actively developed as a **production-grade scripting language** with async, optimized bytecode, and an ahead-of-time compiler.
+Vyom is actively developed as a **production-grade scripting language** with async, optimized bytecode, and an ahead-of-time compiler.
 
 ## Easy syntax
 
-Falcon supports an easy custom style used across current examples:
+Vyom supports an easy custom style used across current examples:
 
-```falcon
+```vyom
 set count = 0
 
 fn add(a: int, b: int) => int {
@@ -71,7 +71,7 @@ Keyword aliases:
 # ✨ Highlights (v1.0.0)
 
 ### ✔ Modern JavaScript-like Syntax  
-```falcon
+```vyom
 // Variable declarations with =
 set x = 10;
 set y = 20;  // set works as an alias for set
@@ -85,7 +85,7 @@ show(add(x, 20));
 ```
 
 ### ✔ First-Class Closures & Lexical Scoping  
-```falcon
+```vyom
 fn makeCounter(start) {
     set count = start;
     give fn() {
@@ -101,13 +101,13 @@ show(next());  // 3
 ```
 
 ### ✔ Rich Collection Types & Member Access
-```falcon
+```vyom
 // List (dynamic array)
 set lst = [1, 2, 3];
 // Tuple (immutable)
 set tpl = (1, 2, 3);
 // Dictionary / Object
-set obj = { name: "Falcon", version: 0.3 };
+set obj = { name: "Vyom", version: 0.3 };
 // Set
 set s = set{1, 2, 3};
 // Array (fixed size)
@@ -115,12 +115,12 @@ set arr = array[5];
 
 // Subscript and member access
 show(lst[0]);        // 1
-show(obj.name);      // "Falcon"
+show(obj.name);      // "Vyom"
 show(obj["version"]); // 0.3
 ```
 
 ### ✔ Comparison Operations
-```falcon
+```vyom
 // Equality operators
 set a = 10;
 set b = 20;
@@ -160,7 +160,7 @@ fn classify_number(n) {
 - **Ready for parallel compilation** extensions
 
 ### ✔ Advanced Control Flow
-```falcon
+```vyom
 // Traditional for-loop with step
 for set i = 1 to 10 step 2 {
     show("Count:", i);
@@ -181,7 +181,7 @@ while (x < 5) {
 ```
 
 ### ✔ Hybrid Execution Model  
-Falcon runs code through a sophisticated dual-path system:
+Vyom runs code through a sophisticated dual-path system:
 
 1. **Compiler → Optimized Bytecode** (fast path for simple code)
 2. **VM executes bytecode** (stack-based, efficient execution)
@@ -196,8 +196,8 @@ This gives you the **speed of compiled bytecode** with the **flexibility of inte
 Clone:
 
 ```bash
-git clone https://github.com/Gabrial-8467/falcon.git
-cd falcon
+git clone https://github.com/Gabrial-8467/vyom.git
+cd vyom
 ```
 
 Set up environment:
@@ -216,7 +216,7 @@ pip install -r requirements.txt
 ```
 
 ---
-# ▶ Install Falcon
+# ▶ Install Vyom
 
 ```bash
 pip install -e .
@@ -225,49 +225,49 @@ pip install -e .
 # ▶ Running the REPL
 
 ```bash
-python -m falcon.repl
+python -m vyom.repl
 ```
 
 Example:
 
 ```bash
-Falcon REPL — v1.0.0  
-falcon> set x = 5;
-falcon> x * 2
+Vyom REPL — v1.0.0  
+vyom> set x = 5;
+vyom> x * 2
 10
-falcon> fn greet(name) { show("Hello, " + name + "!"); }
-falcon> greet("Falcon")
-Hello, Falcon!
-falcon> .quit
+vyom> fn greet(name) { show("Hello, " + name + "!"); }
+vyom> greet("Vyom")
+Hello, Vyom!
+vyom> .quit
 ```
 
 ---
 
-# ▶ Running a Falcon Program
+# ▶ Running a Vyom Program
 
 ```bash
-python -m falcon.runner examples/hello.fn
+python -m vyom.runner examples/hello.vyom
 ```
 
 Or using the package entry point:
 
 ```bash
-falcon examples/hello.fn
+vyom examples/hello.vyom
 ```
 
 VM output example:
 
 ```
-Compiled module: examples/hello.fn
+Compiled module: examples/hello.vyom
 [VM] Running...
-Hello, Falcon!
+Hello, Vyom!
 ```
 
 ---
 
 # 🎨 Passive Built-in Formatter
 
-Falcon includes a **passive AST-based formatter** that automatically normalizes code structure during execution. No manual commands required.
+Vyom includes a **passive AST-based formatter** that automatically normalizes code structure during execution. No manual commands required.
 
 ## How It Works
 
@@ -294,7 +294,7 @@ source code → lexer → parser → AST → formatter normalization → interpr
 ## Example Transformation
 
 Input code with inconsistent formatting:
-```falcon
+```vyom
 fn add(a,b){give a+b}
 set x=5
 set y=10
@@ -302,7 +302,7 @@ show(add(x,y))
 ```
 
 Gets automatically normalized during execution:
-```falcon
+```vyom
 fn add(a, b) {
     give a + b
 }
@@ -314,18 +314,18 @@ show(add(x, y))
 
 ## Integration
 
-- **Runner**: Automatically formats when running `.fn` files
+- **Runner**: Automatically formats when running `.vyom` files
 - **REPL**: Formats each input before interpretation
 - **Zero configuration**: Works out of the box
 
-The formatter ensures consistent code structure across all Falcon programs while maintaining full backward compatibility.
+The formatter ensures consistent code structure across all Vyom programs while maintaining full backward compatibility.
 
 ---
 
 # 📂 Project Architecture  
 
 ```
-falcon/
+vyom/
 ├── README.md                 # Main documentation and getting started guide
 ├── CHARTER.md               # Language design principles and goals
 ├── LICENSE                  # Apache License 2.0
@@ -333,7 +333,7 @@ falcon/
 ├── requirements.txt          # Development dependencies
 │
 ├── src/                     # Source code directory
-│   ├── falcon/              # Main language package
+│   ├── vyom/               # Main language package
 │   │   ├── __init__.py      # Package initialization and entry points
 │   │   ├── main.py          # CLI interface
 │   │   ├── lexer.py         # Tokenizer: converts source text to tokens
@@ -352,7 +352,7 @@ falcon/
 │   │   │   ├── printer.py    # Structured output generation
 │   │   │   └── rules.py     # Formatting rules configuration
 │   │   ├── repl.py          # REPL: interactive development environment
-│   │   ├── runner.py        # File runner: executes .fn programs
+│   │   ├── runner.py        # File runner: executes .vyom programs
 │   │   ├── type_checker.py # Type system and runtime type checking
 │   │   └── utils/          # Utility modules
 │   │       ├── __init__.py
@@ -366,21 +366,21 @@ falcon/
 │       └── test_examples.py   # Integration tests for examples
 │
 ├── examples/                # Example programs demonstrating language features
-│   ├── hello.fn           # Simple Hello World program
-│   ├── easy_custom.fn     # Super easy custom syntax demo
-│   ├── variables.fn       # Variable declarations and types
-│   ├── type_annotations.fn # Language-level type annotations
-│   ├── functions.fn       # Function types and patterns
-│   ├── operators.fn      # Arithmetic, comparison, logical operations
-│   ├── collections.fn     # Lists, tuples, dictionaries, sets, arrays
-│   ├── control_flow.fn    # if/else, loops, break statements
-│   ├── factorial.fn       # Recursion example
-│   ├── closure.fn         # Closure demonstration
-│   ├── loop.fn           # Loop constructs
-│   ├── pattern_matching.fn # Advanced pattern matching examples
-│   ├── match_guards.fn    # Pattern matching with guards and dict destructuring
-│   ├── error_handling.fn  # Custom try/catch/throw error handling
-│   └── async_stub.fn      # Promise API (synchronous stub)
+│   ├── hello.vyom           # Simple Hello World program
+│   ├── easy_custom.vyom     # Super easy custom syntax demo
+│   ├── variables.vyom       # Variable declarations and types
+│   ├── type_annotations.vyom # Language-level type annotations
+│   ├── functions.vyom       # Function types and patterns
+│   ├── operators.vyom      # Arithmetic, comparison, logical operations
+│   ├── collections.vyom     # Lists, tuples, dictionaries, sets, arrays
+│   ├── control_flow.vyom    # if/else, loops, break statements
+│   ├── factorial.vyom       # Recursion example
+│   ├── closure.vyom         # Closure demonstration
+│   ├── loop.vyom           # Loop constructs
+│   ├── pattern_matching.vyom # Advanced pattern matching examples
+│   ├── match_guards.vyom    # Pattern matching with guards and dict destructuring
+│   ├── error_handling.vyom  # Custom try/catch/throw error handling
+│   └── async_stub.vyom      # Promise API (synchronous stub)
 │
 ├── assets/                 # Project assets (logos, images)
 ├── tools/                  # Development and utility tools
@@ -392,10 +392,10 @@ falcon/
 
 # 📘 Example Programs
 
-### **hello.fn** - Simple Hello World
-```falcon
+### **hello.vyom** - Simple Hello World
+```vyom
 // Basic "Hello, World!" program
-show("Hello, Falcon!");
+show("Hello, Vyom!");
 
 // Simple function
 fn greet(name) {
@@ -405,8 +405,8 @@ fn greet(name) {
 show(greet("World"));
 ```
 
-### **easy_custom.fn** - Super Easy Custom Syntax
-```falcon
+### **easy_custom.vyom** - Super Easy Custom Syntax
+```vyom
 set count = 0
 
 fn add(a: int, b: int) => int {
@@ -423,8 +423,8 @@ loop count < 3 {
 }
 ```
 
-### **variables.fn** - Variable Declarations
-```falcon
+### **variables.vyom** - Variable Declarations
+```vyom
 // Easy declarations
 set x = 10
 set y = 20
@@ -433,7 +433,7 @@ show("y =", y)
 
 // Constant declarations with =
 const pi = 3.14159;
-const name = "Falcon";
+const name = "Vyom";
 show("const pi =", pi);
 show("const name =", name);
 
@@ -442,10 +442,10 @@ x = x + 5;
 show("x updated to:", x);
 ```
 
-### **type_annotations.fn** - Language-level Type Annotations
-```falcon
+### **type_annotations.vyom** - Language-level Type Annotations
+```vyom
 set count: int = 3;
-set title: string = "Falcon";
+set title: string = "Vyom";
 const enabled: bool = true;
 
 fn add(a: int, b: int): int {
@@ -461,8 +461,8 @@ show(banner(title));
 show(enabled);
 ```
 
-### **functions.fn** - Function Types & Patterns
-```falcon
+### **functions.vyom** - Function Types & Patterns
+```vyom
 // Function declaration
 fn add(a, b) {
     give a + b
@@ -488,8 +488,8 @@ show("multiply(4, 7) =", multiply(4, 7));
 show("applyOperation(10, 5, add) =", applyOperation(10, 5, add));
 ```
 
-### **operators.fn** - Arithmetic, Comparison & Logical
-```falcon
+### **operators.vyom** - Arithmetic, Comparison & Logical
+```vyom
 // Arithmetic operations
 set a = 10
 set b = 3
@@ -511,8 +511,8 @@ show("true || false =", true || false);  // true
 show("!true =", !true);                 // false
 ```
 
-### **collections.fn** - Lists, Tuples, Dictionaries, Sets, Arrays
-```falcon
+### **collections.vyom** - Lists, Tuples, Dictionaries, Sets, Arrays
+```vyom
 // List (dynamic array)
 set fruits = ["apple", "banana", "orange"];
 show("List:", fruits);
@@ -525,7 +525,7 @@ show("Second coordinate:", coordinates[1]);
 
 // Dictionary / Object
 set person = {
-    name: "Alice",
+    name: "Vyom",
     age: 25,
     city: "New York"
 };
@@ -544,8 +544,8 @@ scores[1] = 87;
 show("Array:", scores);
 ```
 
-### **control_flow.fn** - If/Else, Loops, Break
-```falcon
+### **control_flow.vyom** - If/Else, Loops, Break
+```vyom
 // If/else statements
 fn checkNumber(n) {
     when (n > 0) {
@@ -588,8 +588,8 @@ fn limitedLoop(maxIterations) {
 limitedLoop(3);
 ```
 
-### **factorial.fn** - Recursive Functions
-```falcon
+### **factorial.vyom** - Recursive Functions
+```vyom
 // Classic recursive factorial implementation
 fn fact(n) {
     when (n == 0) { 
@@ -604,8 +604,8 @@ show("6! =", fact(6));    // 720
 show("10! =", fact(10));  // 3628800
 ```
 
-### **closure.fn** - Lexical Scoping & Closures
-```falcon
+### **closure.vyom** - Lexical Scoping & Closures
+```vyom
 // Simple counter closure
 fn makeCounter() {
     set c = 0;
@@ -635,9 +635,9 @@ show("5 + 3 =", add5(3));    // 8
 show("10 + 7 =", add10(7));  // 17
 ```
 
-### **loop.fn** - Loop Constructs
-```falcon
-// For loop with step (Falcon style)
+### **loop.vyom** - Loop Constructs
+```vyom
+// For loop with step (Vyom style)
 for set i = 1 to 5 step 1 {
     show("for-loop value:", i);
 }
@@ -666,8 +666,8 @@ fn controlledLoop() {
 controlledLoop();
 ```
 
-### **match_guards.fn** - Pattern Matching with Guards
-```falcon
+### **match_guards.vyom** - Pattern Matching with Guards
+```vyom
 fn classifyUser(user) {
     give match user {
         case { role: "admin", active: true, name: n }: "admin:" + n;
@@ -685,8 +685,8 @@ show(classifyUser({ role: "guest" }));
 show(classifyUser({ foo: "bar" }));
 ```
 
-### **error_handling.fn** - Custom try/catch/throw
-```falcon
+### **error_handling.vyom** - Custom try/catch/throw
+```vyom
 fn safeDivide(a, b) {
     when (b == 0) {
         throw "division by zero";
@@ -702,8 +702,8 @@ try {
 }
 ```
 
-### **async_stub.fn** - Promise API (Synchronous)
-```falcon
+### **async_stub.vyom** - Promise API (Synchronous)
+```vyom
 show("Starting async stub...");
 
 // Create and resolve a promise
@@ -791,7 +791,5 @@ See `LICENSE` for details.
 
 ---
 
-# 🦅 Falcon — “Small language. Big possibilities.”
-Falcon is built to grow — from a lightweight VM to a complete, scripting language.
-  
-
+# 🦅 Vyom — “Small language. Big possibilities.”
+Vyom is built to grow — from a lightweight VM to a complete, scripting language.

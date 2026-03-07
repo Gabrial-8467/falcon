@@ -1,7 +1,7 @@
-from falcon.interpreter import Interpreter, InterpreterError
-from falcon.lexer import Lexer
-from falcon.parser import Parser
-from falcon.type_checker import TypeCheckError, TypeChecker
+from vyom.interpreter import Interpreter, InterpreterError
+from vyom.lexer import Lexer
+from vyom.parser import Parser
+from vyom.type_checker import TypeCheckError, TypeChecker
 
 
 def _parse(src: str):

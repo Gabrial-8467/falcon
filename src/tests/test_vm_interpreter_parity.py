@@ -2,13 +2,13 @@ import io
 import textwrap
 from contextlib import redirect_stdout
 
-from falcon.builtins import BUILTINS
-from falcon.compiler import Compiler
-from falcon.interpreter import Interpreter
-from falcon.lexer import Lexer
-from falcon.parser import Parser
-from falcon.type_checker import TypeChecker
-from falcon.vm import VM
+from vyom.builtins import BUILTINS
+from vyom.compiler import Compiler
+from vyom.interpreter import Interpreter
+from vyom.lexer import Lexer
+from vyom.parser import Parser
+from vyom.type_checker import TypeChecker
+from vyom.vm import VM
 
 
 def _run_interpreter(src: str):

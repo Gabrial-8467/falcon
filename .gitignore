@@ -182,15 +182,14 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# Falcon Windows packaging artifacts
+# Vyom Windows packaging artifacts
 *.exe
 *.msi
 *.iss.tmp
 
-# Falcon-specific build artifacts
-falcon.spec
-falcon-setup-*.exe
-!installer/falcon.iss
+# Vyom-specific build artifacts
+vyom-setup-*.exe
+!installer/vyom.iss
 
 # PyInstaller build files
 *.toc
@@ -200,21 +199,21 @@ localpycs/
 warn-*.txt
 xref-*.html
 
-# Falcon temporary files
-*.fn.tmp
-*.fn.bak
-repl_test.fn
-test_*.fn
-simple_pattern.fn
-test_case_fix.fn
-test_pattern.fn
-test_simple_match.fn
+# Vyom temporary files
+*.vyom.tmp
+*.vyom.bak
+repl_test.vyom
+test_*.vyom
+simple_pattern.vyom
+test_case_fix.vyom
+test_pattern.vyom
+test_simple_match.vyom
 
-# Falcon bytecode cache
-*.fbc
-*.fbc.tmp
+# Vyom bytecode cache
+*.vbc
+*.vbc.tmp
 
-# Falcon debug files
+# Vyom debug files
 debug_*.py
 debug_*.log
 parser_fix.txt

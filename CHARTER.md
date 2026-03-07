@@ -1,15 +1,15 @@
-# 🦅 Falcon Language Charter
+# 🦅 vyom Language Charter
 
-Falcon is a lightweight, expressive programming language designed for clarity, speed, and ease of implementation.
-This charter defines the **core goals**, **design principles**, and **scope** of the Falcon language.
+vyom is a lightweight, expressive programming language designed for clarity, speed, and ease of implementation.
+This charter defines the **core goals**, **design principles**, and **scope** of the vyom language.
 
-Falcon begins as a **simple interpreter implemented in Python**, with the goal of being a modern scripting language with async capabilities and a bytecode VM.
+vyom begins as a **simple interpreter implemented in Python**, with the goal of being a modern scripting language with async capabilities and a bytecode VM.
 
 ---
 
 ## 🎯 Mission Statement
 
-Falcon aims to be a **clean, readable, lightweight scripting language** that is easy to learn, fast to write, and simple to implement.
+vyom aims to be a **clean, readable, lightweight scripting language** that is easy to learn, fast to write, and simple to implement.
 It focuses on:
 
 * Clear syntax
@@ -17,7 +17,7 @@ It focuses on:
 * First-class functions
 * Optional advanced features as the language grows
 
-Falcon should feel intuitive to beginners yet flexible enough for advanced developers.
+vyom should feel intuitive to beginners yet flexible enough for advanced developers.
 
 ---
 
@@ -36,7 +36,7 @@ The language's purpose is **clarity** and **correctness**.
 
 ## Design Principles
 
-Falcon’s design is guided by these principles:
+vyom’s design is guided by these principles:
 
 ### ✔ Simplicity
 
@@ -56,7 +56,7 @@ Functions, expressions, and blocks should compose naturally.
 
 ### ✔ Learnability
 
-New programmers should be able to read and write Falcon comfortably.
+New programmers should be able to read and write vyom comfortably.
 
 ---
 
@@ -82,7 +82,7 @@ New programmers should be able to read and write Falcon comfortably.
 ### Tools
 
 * REPL with multiline support
-* Script runner (`falcon run file.fn`)
+* Script runner (`vyom run file.vyom`)
 * Example programs
 
 ---
@@ -104,12 +104,12 @@ These will be added incrementally as the language evolves.
 
 ---
 
-## 🧪 Example Falcon Programs
+## 🧪 Example vyom Programs
 
 ### Hello World
 
 ```
-print("Hello, Falcon!")
+print("Hello, vyom!")
 ```
 
 ### Functions & Closures
@@ -138,7 +138,7 @@ print(fact(6))
 
 ## 📍 Long-Term Vision
 
-Falcon aims to mature into a full-featured scripting language with:
+vyom aims to mature into a full-featured scripting language with:
 
 * Rich standard library
 * Async/await & concurrency primitives

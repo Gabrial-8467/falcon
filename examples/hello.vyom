@@ -1,0 +1,10 @@
+// Basic "Hello, World!" program
+show("Hello, vyom!");
+
+// Simple fn
+fn greet(name) {
+    give "Hello, " + name + "!";
+}
+
+show(greet("World"));
+

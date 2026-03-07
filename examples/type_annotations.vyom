@@ -1,0 +1,18 @@
+// vyom language-level type annotations (runtime-checked)
+
+set count: int = 3;
+set title: string = "vyom";
+const enabled: bool = true;
+
+fn add(a: int, b: int): int {
+    give a + b;
+}
+
+fn banner(name: string): string {
+    give "Hello, " + name;
+}
+
+show(add(count, 9));        // 12
+show(banner(title));        // Hello, vyom
+show(enabled);              // true
+

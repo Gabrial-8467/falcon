@@ -1,0 +1,27 @@
+// For loop with step (vyom style)
+for i = 1 to 5 step 1 {
+    show("for-loop value:", i);
+}
+
+// For loop with custom step
+for j = 0 to 10 step 2 {
+    show("even numbers:", j);
+}
+
+// While loop
+set count = 0;
+while (count < 3) {
+    show("while loop:", count);
+    count = count + 1;
+}
+
+// Infinite loop with break condition
+fn controlledLoop() {
+    set k = 0;
+    loop {
+        show("infinite loop:", k);
+        k = k + 1;
+        when (k >= 3) { break; }
+    }
+}
+controlledLoop();
