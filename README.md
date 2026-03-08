@@ -14,6 +14,8 @@ A modern, expressive programming language with clean syntax, advanced pattern ma
 - **First-Class Functions**: Closures and higher-order functions
 - **Collections**: Lists, tuples, dictionaries, sets, and arrays
 - **REPL**: Interactive development environment
+- **LSP Server**: Built-in Language Server Protocol with syntax highlighting, auto-completion, and diagnostics
+- **Code Analysis**: Comprehensive static analysis, security checks, and performance optimization
 
 # 📦 Installation
 
@@ -69,6 +71,17 @@ Vyom includes a built-in Language Server Protocol implementation providing rich 
 - **Auto-completion**: Intelligent code completion for keywords, functions, and types
 - **Hover Information**: Documentation on hover for keywords and built-in functions
 - **Error Diagnostics**: Real-time syntax and type checking with error highlighting
+- **Syntax Highlighting**: Colorful syntax highlighting for all Vyom language constructs
+- **Code Analysis**: Static analysis, security checks, and performance optimization
+
+### Syntax Highlighting
+The LSP server provides automatic syntax highlighting for:
+- **Keywords** (blue, bold): `fn`, `give`, `if`, `else`, `while`, `match`, etc.
+- **Types** (teal): `int`, `string`, `bool`, `list`, `dict`, etc.
+- **Strings** (orange): `"Hello, World!"`
+- **Numbers** (light green): `42`, `3.14`
+- **Comments** (green, italic): `// This is a comment`
+- **Operators** (white): `+`, `-`, `*`, `/`, `=`, `==`, `!=`
 
 ### Editor Setup
 
@@ -111,6 +124,47 @@ Add to `coc-settings.json`:
 ```
 
 For detailed LSP documentation, see [LSP.md](LSP.md).
+
+## 🔍 Code Analysis
+
+Vyom includes comprehensive code analysis tools:
+
+### Static Analysis
+- Code quality and style checks
+- Variable naming convention validation
+- Unused variable detection
+- Function call validation
+
+### Security Analysis
+- Hardcoded secret detection
+- Dangerous function identification
+- Injection vulnerability checks
+- Sensitive data handling analysis
+
+### Performance Analysis
+- Expensive operations in loops
+- String concatenation optimization
+- Large data structure warnings
+- Function call frequency analysis
+
+### Complexity Analysis
+- Cyclomatic complexity calculation
+- Function complexity scoring
+- Nesting depth analysis
+- Maintainability metrics
+
+### Usage
+```python
+from vyom.analyzer import VyomAnalyzer, analyze_comprehensive
+
+# Analyze code
+analyzer = VyomAnalyzer()
+results = analyzer.analyze(ast)
+
+print(f"Total issues: {results['summary']['total_issues']}")
+for issue in results['issues']:
+    print(f"{issue['severity']}: {issue['message']}")
+```
 
 ## 🎯 Quick Start
 
@@ -420,30 +474,29 @@ Source Code → Lexer → Parser → Type Checker → Compiler → VM
 
 ## 🧪 Testing
 
-Run the comprehensive test suite:
+Run the test suite:
 
 ```bash
 # Run all tests
-pytest src/tests/
+python -m pytest src/tests/ -v
 
 # Run specific test categories
-pytest src/tests/test_lexer.py
-pytest src/tests/test_parser.py
-pytest src/tests/test_interpreter.py
-pytest src/tests/test_pattern_matching.py
+python -m pytest src/tests/test_lexer.py -v
+python -m pytest src/tests/test_parser.py -v
+python -m pytest src/tests/test_lsp.py -v
+python -m pytest src/tests/test_analyzer.py -v
 ```
 
 ### Test Coverage
-- ✅ **All tests passing** (38/38 tests)
-- ✅ **All examples working** (14/14 examples)
-- Lexer tests
-- Parser tests  
-- Interpreter tests
-- Pattern matching tests
-- Type annotation tests
-- VM/Interpreter parity tests
-- Example programs
-- VM optimization tests
+- **Lexer Tests**: Tokenization, comments, strings
+- **Parser Tests**: Syntax parsing, error handling
+- **Pattern Matching Tests**: All pattern types and edge cases
+- **Type Annotation Tests**: Type checking and validation
+- **LSP Server Tests**: Language server functionality
+- **Analyzer Tests**: Static analysis, security, performance
+- **VM Interpreter Parity Tests**: VM vs interpreter compatibility
+- **Example Programs**: Execution tests for example programs
+- **VM Optimization Tests**: Performance tests for VM optimizations
 
 ## 📁 Project Structure
 
