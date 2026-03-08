@@ -6,7 +6,6 @@ Provides:
 - show(...) as the preferred output function (used by VM)
 - readFile(path) and writeFile(path, content) with safety checks
 - Promise stub for future async support (synchronous placeholder)
-- console object with log/error methods
 - toString(value) and internal _to_string_impl for coercion
 - other small runtime helpers (len, range, typeOf, assert, exit)
 """
@@ -59,18 +58,6 @@ def show(*args: Any) -> None:
     """Preferred Vyom output function: show(...)."""
     out = " ".join(_to_display(a) for a in args)
     print(out)
-
-class _Console:
-    @staticmethod
-    def log(*args: Any) -> None:
-        show(*args)
-
-    @staticmethod
-    def error(*args: Any) -> None:
-        print("ERROR:", " ".join(_to_display(a) for a in args), file=sys.stderr)
-
-# Create console instance
-console = _Console()
 
 # --------------------
 # File I/O with safety checks
@@ -286,7 +273,6 @@ def exit_builtin(code: int = 0) -> None:
 # Export builtins mapping (used by VM)
 # --------------------
 BUILTINS: Dict[str, Callable[..., Any]] = {
-    "console": console,
     "Promise": Promise,
     "show": show,
     "list": lambda: [],

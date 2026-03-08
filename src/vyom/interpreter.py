@@ -3,7 +3,7 @@ Interpreter for Vyom (JS-like) AST.
 
 Updated to support:
 - Member access (base.name) resolving attributes on Python objects & dicts
-- Method-style calls like console.log("hi")
+- Method-style calls like show("hi")
 - Function expressions evaluation (returns Function object)
 - Assignment expressions (target = value) with env.assign and member set
 - String coercion for '+' and helper _to_string to match builtins.toString
@@ -19,7 +19,7 @@ from .ast_nodes import (
     Expr, Literal, Variable, Binary, Unary, Grouping, Call, Member, FunctionExpr, Assign,
     ListLiteral, TupleLiteral, DictLiteral, SetLiteral, ArrayLiteral, Subscript,
     Stmt, ExprStmt, LetStmt, BlockStmt, IfStmt, WhileStmt,
-    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt, ThrowStmt, TryCatchStmt,
+    FunctionStmt, ReturnStmt, ForStmt, LoopStmt, BreakStmt, ThrowStmt, TryCatchStmt, PrintStmt,
     # Pattern matching nodes
     Pattern, LiteralPattern, VariablePattern, TypePattern, ListPattern, TuplePattern,
     DictPattern, OrPattern, WildcardPattern, CaseArm, MatchExpr, MatchStmt
@@ -143,6 +143,13 @@ class Interpreter:
     def _execute(self, stmt: Stmt, env: Environment) -> None:
         if isinstance(stmt, ExprStmt):
             self._eval(stmt.expr, env)
+            return
+
+        if isinstance(stmt, PrintStmt):
+            value = self._eval(stmt.expr, env)
+            # Use the same output as the show builtin
+            from .builtins import show
+            show(value)
             return
 
         if isinstance(stmt, LetStmt):

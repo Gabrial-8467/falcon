@@ -1,6 +1,6 @@
 show ("Starting async stub...");
 
-set p = Promise.resolve(42);
+var p = Promise.resolve(42);
 
 p.then(fn(x) {
     show ("Promise resolved with:");

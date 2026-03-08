@@ -42,10 +42,22 @@ class Frame:
     def __init__(self, code: Code, globals_, locals_, name=None):
         self.code = code
         self.ip = 0
-        self.stack: List[Any] = []
+        self.stack: List[Any] = [None] * 256  # Pre-allocated stack
+        self.sp = -1  # Stack pointer for faster access
         self.locals = locals_
         self.globals = globals_
         self.name = name or code.name
+    
+    def push(self, v: Any) -> None:
+        """Optimized push operation"""
+        self.sp += 1
+        self.stack[self.sp] = v
+    
+    def pop(self) -> Any:
+        """Optimized pop operation"""
+        v = self.stack[self.sp]
+        self.sp -= 1
+        return v
 
 
 class VM:
@@ -74,221 +86,235 @@ class VM:
         instrs = frame.code.instructions
         consts = frame.code.consts
         stack = frame.stack
+        sp = frame.sp  # Use local variable for stack pointer
         locals_ = frame.locals
         globals_ = frame.globals
 
         ip = frame.ip
         n = len(instrs)
 
-        def push(v): stack.append(v)
-        def pop():
-            if not stack: raise VMRuntimeError("stack underflow")
-            return stack.pop()
-
-        # ----------------------------------
-        # Opcode handlers
-        # ----------------------------------
-        def h_LOAD_CONST(a): push(consts[a])
-        def h_LOAD_GLOBAL(a): push(globals_.get(a))
-        def h_STORE_GLOBAL(a): globals_[a] = pop()
-
-        def h_LOAD_LOCAL(a): push(locals_[a] if a < len(locals_) else None)
-        def h_STORE_LOCAL(a):
-            v = pop()
-            if a >= len(locals_):
-                locals_.extend([None] * (a - len(locals_) + 1))
-            locals_[a] = v
-
-        def h_POP(a): pop()
-
-        # arithmetic
-        def h_ADD(a):
-            b = pop(); 
-            c = pop()
-            # string concat safety
-            if isinstance(b, str) or isinstance(c, str):
-                from .builtins import _to_string_impl
-                push(_to_string_impl(c) + _to_string_impl(b))
-            else:
-                push(c+b)
-
-        def h_SUB(a): b=pop(); a1=pop(); push(a1-b)
-        def h_MUL(a): b=pop(); a1=pop(); push(a1*b)
-        def h_DIV(a): b=pop(); a1=pop(); push(a1/b)
-        def h_MOD(a): b=pop(); a1=pop(); push(a1%b)
-
-        def h_EQ(a): b=pop(); a1=pop(); push(a1==b)
-        def h_NEQ(a): b=pop(); a1=pop(); push(a1!=b)
-        def h_LT(a): b=pop(); a1=pop(); push(a1<b)
-        def h_LTE(a): b=pop(); a1=pop(); push(a1<=b)
-        def h_GT(a): b=pop(); a1=pop(); push(a1>b)
-        def h_GTE(a): b=pop(); a1=pop(); push(a1>=b)
-
-        def h_AND(a): b=pop(); a1=pop(); push(a1 and b)
-        def h_OR(a): b=pop(); a1=pop(); push(a1 or b)
-        def h_NOT(a): push(not pop())
-
-        # jumps
-        def h_JUMP(t): return t
-        def h_JUMP_IF_FALSE(t):
-            if not self._truthy(pop()):
-                return t
-
-        # printing
-        def h_PRINT(a):
-            v = pop()
-            show = globals_.get("show")
-            show(v) if callable(show) else print(v)
-
-        # attribute
-        def h_LOAD_ATTR(a):
-            base = pop()
-            if isinstance(base, dict): push(base.get(a))
-            else: push(getattr(base, a, None))
-
-        def h_STORE_ATTR(a):
-            val = pop()
-            base = pop()
-            if isinstance(base, dict):
-                base[a] = val
-            else:
-                setattr(base, a, val)
-            push(val)
-
-        # functions
-        def h_MAKE_FUNCTION(conf):
-            mode = conf[0]
-            if mode == "AST":
-                idx = conf[1]
-                ast = consts[idx]
-                push(FunctionObject(getattr(ast, "name", None),
-                                    None,
-                                    ast))
-            else:
-                _, idx, name, argc, nloc = conf
-                c = consts[idx]
-                push(FunctionObject(name, c, None))
+        # Inline push/pop for maximum performance
+        def push(v: Any) -> None:
+            nonlocal sp
+            sp += 1
+            stack[sp] = v
         
-        def h_CALL(argc):
-            args = [pop() for _ in range(argc)][::-1]
-            callee = pop()
-
-            if isinstance(callee, FunctionObject):
-                # AST function
-                if callee.is_ast_backed():
-                    res = self.interpreter.call_function_ast(callee.ast_node, args)
-                    push(res)
-                    return
-
-                # bytecode function
-                sub = Frame(callee.code,
-                            globals_,
-                            [None]*callee.code.nlocals,
-                            name=callee.name)
-                for i in range(min(len(args), callee.code.argcount)):
-                    sub.locals[i] = args[i]
-
-                self.frames.append(sub)
-                out = self.run_frame(sub)
-                self.frames.pop()
-                push(out)
-                return
-
-            # interpreter function
-            call_attr = getattr(callee, "call", None)
-            if callable(call_attr):
-                try: push(call_attr(self.interpreter, args))
-                except TypeError: push(call_attr(*args))
-                return
-            
-            # Python builtin
-            if callable(callee):
-                push(callee(*args))
-                return
-
-            raise VMRuntimeError(f"not callable: {callee}")
-
-        def h_RETURN(a):
-            v = pop() if stack else None
-            return ("RET", v)
+        def pop() -> Any:
+            nonlocal sp
+            v = stack[sp]
+            sp -= 1
+            return v
 
         # ----------------------------------
-        # optimized opcodes
+        # Inline stack operations for performance
         # ----------------------------------
-        def h_INC_LOCAL(idx):
-            if idx >= len(locals_):
-                locals_.extend([None] * (idx - len(locals_) + 1))
-            if locals_[idx] is None:
-                locals_[idx] = 1
-            else:
-                locals_[idx] += 1
-
-        def h_JUMP_IF_GE_LOCAL_IMM(arg):
-            idx, limit, target = arg
-            val = locals_[idx] if idx < len(locals_) and locals_[idx] is not None else 0
-            if val >= limit:
-                return target
-
-        def h_FAST_COUNT(arg):
-            idx, limit, target = arg
-            if idx >= len(locals_):
-                locals_.extend([None]*(idx-len(locals_)+1))
-            locals_[idx] = limit
-            return target
 
         # ----------------------------------
-        # DISPATCH TABLE
-        # ----------------------------------
-        handlers = {
-            OP_LOAD_CONST: h_LOAD_CONST,
-            OP_LOAD_GLOBAL: h_LOAD_GLOBAL,
-            OP_STORE_GLOBAL: h_STORE_GLOBAL,
-            OP_LOAD_LOCAL: h_LOAD_LOCAL,
-            OP_STORE_LOCAL: h_STORE_LOCAL,
-            OP_POP: h_POP,
-            OP_ADD: h_ADD, OP_SUB: h_SUB, OP_MUL: h_MUL,
-            OP_DIV: h_DIV, OP_MOD: h_MOD,
-            OP_EQ: h_EQ, OP_NEQ: h_NEQ,
-            OP_LT: h_LT, OP_LTE: h_LTE,
-            OP_GT: h_GT, OP_GTE: h_GTE,
-            OP_AND: h_AND, OP_OR: h_OR, OP_NOT: h_NOT,
-            OP_JUMP: h_JUMP,
-            OP_JUMP_IF_FALSE: h_JUMP_IF_FALSE,
-            OP_PRINT: h_PRINT,
-            OP_MAKE_FUNCTION: h_MAKE_FUNCTION,
-            OP_LOAD_ATTR: h_LOAD_ATTR,
-            OP_STORE_ATTR: h_STORE_ATTR,
-            OP_CALL: h_CALL,
-            OP_RETURN: h_RETURN,
-            OP_INC_LOCAL: h_INC_LOCAL,
-            OP_JUMP_IF_GE_LOCAL_IMM: h_JUMP_IF_GE_LOCAL_IMM,
-            OP_FAST_COUNT: h_FAST_COUNT,
-        }
-
-        # ----------------------------------
-        # MAIN LOOP
+        # MAIN LOOP - Optimized dispatch
         # ----------------------------------
         while ip < n:
             op, arg = instrs[ip]
             ip += 1
 
-            h = handlers.get(op)
-            if h is None:
+            # Optimized dispatch with if-elif chains (faster than dict lookup)
+            if op == OP_LOAD_CONST:
+                push(consts[arg])
+            elif op == OP_LOAD_GLOBAL:
+                push(globals_.get(arg))
+            elif op == OP_STORE_GLOBAL:
+                globals_[arg] = pop()
+            elif op == OP_LOAD_LOCAL:
+                push(locals_[arg] if arg < len(locals_) else None)
+            elif op == OP_STORE_LOCAL:
+                v = pop()
+                if arg >= len(locals_):
+                    locals_.extend([None] * (arg - len(locals_) + 1))
+                locals_[arg] = v
+            elif op == OP_POP:
+                pop()
+            
+            # Optimized arithmetic operations
+            elif op == OP_ADD:
+                b = pop()
+                a = pop()
+                # Inline string concatenation check
+                if isinstance(b, str) or isinstance(a, str):
+                    from .builtins import _to_string_impl
+                    push(_to_string_impl(a) + _to_string_impl(b))
+                else:
+                    push(a + b)
+            elif op == OP_SUB:
+                b = pop()
+                a = pop()
+                push(a - b)
+            elif op == OP_MUL:
+                b = pop()
+                a = pop()
+                push(a * b)
+            elif op == OP_DIV:
+                b = pop()
+                a = pop()
+                push(a / b)
+            elif op == OP_MOD:
+                b = pop()
+                a = pop()
+                push(a % b)
+            
+            # Optimized comparison operations
+            elif op == OP_EQ:
+                b = pop()
+                a = pop()
+                push(a == b)
+            elif op == OP_NEQ:
+                b = pop()
+                a = pop()
+                push(a != b)
+            elif op == OP_LT:
+                b = pop()
+                a = pop()
+                push(a < b)
+            elif op == OP_LTE:
+                b = pop()
+                a = pop()
+                push(a <= b)
+            elif op == OP_GT:
+                b = pop()
+                a = pop()
+                push(a > b)
+            elif op == OP_GTE:
+                b = pop()
+                a = pop()
+                push(a >= b)
+            
+            # Optimized logical operations
+            elif op == OP_AND:
+                b = pop()
+                a = pop()
+                push(a and b)
+            elif op == OP_OR:
+                b = pop()
+                a = pop()
+                push(a or b)
+            elif op == OP_NOT:
+                push(not pop())
+            
+            # Optimized jump operations
+            elif op == OP_JUMP:
+                ip = arg
+                continue
+            elif op == OP_JUMP_IF_FALSE:
+                if not self._truthy(pop()):
+                    ip = arg
+                continue
+            
+            # Optimized print operation
+            elif op == OP_PRINT:
+                v = pop()
+                show = globals_.get("show")
+                if callable(show):
+                    show(v)
+                else:
+                    print(v)
+            
+            # Optimized attribute operations
+            elif op == OP_LOAD_ATTR:
+                base = pop()
+                if isinstance(base, dict):
+                    push(base.get(arg))
+                else:
+                    push(getattr(base, arg, None))
+            elif op == OP_STORE_ATTR:
+                val = pop()
+                base = pop()
+                if isinstance(base, dict):
+                    base[arg] = val
+                else:
+                    setattr(base, arg, val)
+                push(val)
+            
+            # Function operations
+            elif op == OP_MAKE_FUNCTION:
+                mode = arg[0]
+                if mode == "AST":
+                    idx = arg[1]
+                    ast = consts[idx]
+                    push(FunctionObject(getattr(ast, "name", None), None, ast))
+                else:
+                    _, idx, name, argc, nloc = arg
+                    c = consts[idx]
+                    push(FunctionObject(name, c, None))
+            elif op == OP_CALL:
+                argc = arg
+                args = [pop() for _ in range(argc)][::-1]
+                callee = pop()
+
+                if isinstance(callee, FunctionObject):
+                    # AST function
+                    if callee.is_ast_backed():
+                        res = self.interpreter.call_function_ast(callee.ast_node, args)
+                        push(res)
+                        continue
+
+                    # bytecode function
+                    sub = Frame(callee.code,
+                                globals_,
+                                [None]*callee.code.nlocals,
+                                name=callee.name)
+                    for i in range(min(len(args), callee.code.argcount)):
+                        sub.locals[i] = args[i]
+
+                    self.frames.append(sub)
+                    out = self.run_frame(sub)
+                    self.frames.pop()
+                    push(out)
+                    continue
+
+                # interpreter function
+                call_attr = getattr(callee, "call", None)
+                if callable(call_attr):
+                    try: push(call_attr(self.interpreter, args))
+                    except TypeError: push(call_attr(*args))
+                    continue
+                
+                # Python builtin
+                if callable(callee):
+                    push(callee(*args))
+                    continue
+
+                raise VMRuntimeError(f"not callable: {callee}")
+
+            elif op == OP_RETURN:
+                result = pop() if sp >= 0 else None
+                return result
+            
+            # Optimized opcodes
+            elif op == OP_INC_LOCAL:
+                idx = arg
+                if idx >= len(locals_):
+                    locals_.extend([None] * (idx - len(locals_) + 1))
+                if locals_[idx] is None:
+                    locals_[idx] = 1
+                else:
+                    locals_[idx] += 1
+            elif op == OP_JUMP_IF_GE_LOCAL_IMM:
+                idx, limit, target = arg
+                val = locals_[idx] if idx < len(locals_) and locals_[idx] is not None else 0
+                if val >= limit:
+                    ip = target
+                    continue
+            elif op == OP_FAST_COUNT:
+                idx, limit, target = arg
+                if idx >= len(locals_):
+                    locals_.extend([None]*(idx-len(locals_)+1))
+                locals_[idx] = limit
+                ip = target
+                continue
+            
+            else:
                 raise VMRuntimeError(f"unknown opcode {op}")
-
-            result = h(arg)
-
-            if result is None:
-                continue
-
-            if isinstance(result, int):
-                ip = result
-                continue
-
-            if isinstance(result, tuple) and result[0] == "RET":
-                return result[1]
-
-            raise VMRuntimeError(f"invalid handler return {result}")
+            
+            # Update stack pointer for next iteration
+            frame.sp = sp
 
         return None
 

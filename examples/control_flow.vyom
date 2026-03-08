@@ -27,7 +27,7 @@ for j = 10 to 1 step -2 {
 
 // While loop
 show("\nWhile loop:");
-set counter = 0;
+var counter = 0;
 while (counter < 3) {
     show("While iteration:", counter);
     counter = counter + 1;
@@ -36,7 +36,7 @@ while (counter < 3) {
 // Infinite loop with break
 show("\nControlled infinite loop:");
 fn limitedLoop(maxIterations) {
-    set i = 0;
+    var i = 0;
     loop {
         show("Loop iteration:", i);
         i = i + 1;

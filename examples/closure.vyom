@@ -9,7 +9,7 @@ fn makeCounter() {
 }
 
 // Create and use counter
-set counter = makeCounter();
+var counter = makeCounter();
 show("First call:", counter());  // 1
 show("Second call:", counter()); // 2
 show("Third call:", counter());  // 3
@@ -21,8 +21,8 @@ fn makeAdder(x) {
     };
 }
 
-set add5 = makeAdder(5);
-set add10 = makeAdder(10);
+var add5 = makeAdder(5);
+var add10 = makeAdder(10);
 show("5 + 3 =", add5(3));    // 8
 show("10 + 7 =", add10(7));  // 17
 

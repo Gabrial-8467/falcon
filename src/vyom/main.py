@@ -252,7 +252,7 @@ def execute_line(line: str, env: Dict[str, Any], filename: str = "<input>", line
     if text.startswith("print "):
         expr = text[len("print ") :].strip()
         val = eval_expression(expr, env)
-        # JS-like console.log style
+        # Vyom-style output
         if isinstance(val, tuple) or isinstance(val, list):
             print(*val)
         else:

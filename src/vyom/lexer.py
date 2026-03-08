@@ -6,7 +6,7 @@ Features:
 - numbers (int, float), strings (single/double quotes)
 - identifiers and keywords
 - two-char operators: == != <= >= && ||
-- special operators: declaration ':=' and method '::'
+- special operators: declaration '=' and method '::'
 - produces Token objects from tokens.py
 """
 from __future__ import annotations
@@ -17,10 +17,8 @@ from .utils.text_helpers import is_alpha, is_alnum
 
 
 KEYWORDS = {
-    "var": TokenType.VAR,
-    "let": TokenType.LET,
     "const": TokenType.CONST,
-    "if": TokenType.IF,
+    "var": TokenType.VAR,
     "when": TokenType.IF,
     "else": TokenType.ELSE,
     "while": TokenType.WHILE,
@@ -31,12 +29,10 @@ KEYWORDS = {
     "true": TokenType.TRUE,
     "false": TokenType.FALSE,
     "null": TokenType.NULL,
-    "function": TokenType.FUNCTION,
     "fn": TokenType.FUNCTION,
-    "def": TokenType.FUNCTION,
-    "return": TokenType.RETURN,
+    "function": TokenType.FUNCTION,
     "give": TokenType.RETURN,
-    "say": TokenType.SAY,
+    "show": TokenType.SAY,
     "break": TokenType.BREAK,
     "try": TokenType.TRY,
     "catch": TokenType.CATCH,
@@ -142,9 +138,9 @@ class Lexer:
             self._add_token(TokenType.SLASH)
             return
 
-        # declaration ':=' and method/operator handling (including ':' token)
+        # declaration '=' and method/operator handling (including ':' token)
         if c == ":":
-            # ':=' declaration operator
+            # ':=' declaration operator (legacy support)
             if self._match("="):
                 self._add_token(TokenType.DECL)  # DECL for ':='
                 return

@@ -1,17 +1,17 @@
 // Collection Types Demo - Lists, Tuples, Dictionaries, Sets, Arrays
 
 // List (dynamic array)
-set fruits = ["apple", "banana", "orange"];
+var fruits = ["apple", "banana", "orange"];
 show("List:", fruits);
 show("First fruit:", fruits[0]);
 
 // Tuple (immutable)
-set coordinates = (10, 20, 30);
+var coordinates = (10, 20, 30);
 show("Tuple:", coordinates);
 show("Second coordinate:", coordinates[1]);
 
 // Dictionary / Object
-set person = {
+var person = {
     name: "Alice",
     age: 25,
     city: "New York"
@@ -20,19 +20,28 @@ show("Dictionary:", person);
 show("Name:", person.name);
 show("Age:", person["age"]);
 
-// Set
-set numbers = set{1, 2, 3, 4, 5};
-show("Set:", numbers);
+// Set - Two ways to create sets:
+// Method 1: set{} syntax (explicit)
+var numbers1 = set{1, 2, 3, 4, 5};
+show("Set with set{} syntax:", numbers1);
+
+// Method 2: {} syntax (concise)
+var numbers2 = {1, 2, 3, 4, 5};
+show("Set with {} syntax:", numbers2);
+
+// Set with mixed types
+var mixed_set = {"apple", 42, true, 3.14};
+show("Mixed type set:", mixed_set);
 
 // Array (fixed size)
-set scores = array[5];
+var scores = array[5];
 scores[0] = 95;
 scores[1] = 87;
 scores[2] = 92;
 show("Array:", scores);
 
 // Nested collections
-set data = {
+var data = {
     users: [
         {name: "Bob", score: 85},
         {name: "Carol", score: 92}

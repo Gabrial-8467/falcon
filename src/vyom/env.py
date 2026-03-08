@@ -28,7 +28,7 @@ class Environment:
         self.parent: Optional["Environment"] = parent
 
     # -------------------------
-    # Variable Definition: var x := value
+    # Variable Definition: var x = value
     # -------------------------
     def define(
         self, name: str, value: Any, is_const: bool = False, type_name: Optional[str] = None

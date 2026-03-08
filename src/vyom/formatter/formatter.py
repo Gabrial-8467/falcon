@@ -230,7 +230,7 @@ class VyomFormatter:
         """Format for statements."""
         self.printer.write("for")
         self.printer.space()
-        self.printer.write(f"var {node.name} := ")
+        self.printer.write(f"{node.name} = ")
         self._visit(node.start)
         self.printer.space()
         self.printer.write("to")
@@ -314,7 +314,7 @@ class VyomFormatter:
         
         if node.initializer:
             self.printer.space()
-            self.printer.write(":=" if keyword in ["let", "var"] else "=")
+            self.printer.write("=")
             self.printer.space()
             self._visit(node.initializer)
         

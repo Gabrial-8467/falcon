@@ -1,8 +1,8 @@
-// Variable Declarations Demo - set, set, const with = and =
+// Variable Declarations Demo - var, const with =
 
 // Variable declarations with =
-set x = 10;
-set y = 20;  // set works as an alias for set
+var x = 10;
+var y = 20;
 show("x = 10 =", x);
 show("y = 20 =", y);
 
@@ -16,23 +16,19 @@ show("const name =", name);
 x = x + 5;
 show("x updated to:", x);
 
-// set variable reassignment
+// Variable reassignment
 y = y * 2;
 show("y updated to:", y);
 
-// Multiple declarations
-set a = 1, b = 2, c = 3;
-show("a, b, c =", a, b, c);
-
 // Declaration with expressions
-set result = (x + y) * 2;
+var result = (x + y) * 2;
 show("result = (x + y) * 2 =", result);
 
 // Variable types
-set number = 42;
-set text = "Hello, Vyom!";
-set boolean = true;
-set null_value = null;
+var number = 42;
+var text = "Hello, Vyom!";
+var boolean = true;
+var null_value = null;
 show("Number:", number);
 show("Text:", text);
 show("Boolean:", boolean);

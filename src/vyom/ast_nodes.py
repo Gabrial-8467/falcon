@@ -215,7 +215,7 @@ class ForStmt(Stmt):
     """
     Vyom-style For loop:
 
-        for var i := 1 to 10 step 2 {
+        for i = 1 to 10 step 2 {
             ...
         }
 
@@ -229,8 +229,8 @@ class ForStmt(Stmt):
 
     def __repr__(self) -> str:
         if self.step is None:
-            return f"ForStmt(var {self.name} := {self.start!r} to {self.end!r}, {self.body!r})"
-        return f"ForStmt(var {self.name} := {self.start!r} to {self.end!r} step {self.step!r}, {self.body!r})"
+            return f"ForStmt({self.name} = {self.start!r} to {self.end!r}, {self.body!r})"
+        return f"ForStmt({self.name} = {self.start!r} to {self.end!r} step {self.step!r}, {self.body!r})"
 
 
 @dataclass

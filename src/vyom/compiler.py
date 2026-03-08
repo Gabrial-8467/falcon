@@ -182,23 +182,63 @@ class Compiler:
         return idx
 
     def _peephole_optimize(self, code: Code) -> Code:
-        """Very simple peephole optimizer.
-        Currently removes redundant LOAD_CONST None followed by POP (no‑op).
-        Can be extended with constant folding, jump threading, etc.
-        """
+        """Enhanced peephole optimizer with multiple optimizations."""
         optimized_insts: List[Tuple[int, Any]] = []
         i = 0
         while i < len(code.instructions):
             op, arg = code.instructions[i]
-            # Remove pattern: LOAD_CONST (None) ; POP
+            
+            # Optimization 1: Remove LOAD_CONST None ; POP pattern
             if op == OP_LOAD_CONST and arg == self._add_const(None):
-                # look ahead
                 if i + 1 < len(code.instructions) and code.instructions[i + 1][0] == OP_POP:
-                    # skip both
+                    i += 2  # Skip both instructions
+                    continue
+            
+            # Optimization 2: Constant folding for arithmetic
+            elif op == OP_LOAD_CONST and i + 2 < len(code.instructions):
+                next_op, next_arg = code.instructions[i + 1]
+                if next_op in (OP_ADD, OP_SUB, OP_MUL, OP_DIV):
+                    const_val = code.consts[arg]
+                    if isinstance(const_val, (int, float)):
+                        # Check if next instruction is also a constant
+                        if code.instructions[i + 2][0] == OP_LOAD_CONST:
+                            next_const_idx = code.instructions[i + 2][1]
+                            next_const_val = code.consts[next_const_idx]
+                            if isinstance(next_const_val, (int, float)):
+                                # Fold the operation
+                                if next_op == OP_ADD:
+                                    result = const_val + next_const_val
+                                elif next_op == OP_SUB:
+                                    result = const_val - next_const_val
+                                elif next_op == OP_MUL:
+                                    result = const_val * next_const_val
+                                elif next_op == OP_DIV:
+                                    result = const_val / next_const_val
+                                
+                                # Replace with single constant load
+                                optimized_insts.append((OP_LOAD_CONST, self._add_const(result)))
+                                i += 3  # Skip all three instructions
+                                continue
+            
+            # Optimization 3: Remove redundant jumps
+            elif op == OP_JUMP and i + 1 < len(code.instructions):
+                target = arg
+                if target == i + 1:  # Jump to next instruction
+                    i += 1  # Skip the jump
+                    continue
+            
+            # Optimization 4: Optimize LOAD_LOCAL ; STORE_LOCAL same variable
+            elif op == OP_LOAD_LOCAL and i + 1 < len(code.instructions):
+                next_op, next_arg = code.instructions[i + 1]
+                if next_op == OP_STORE_LOCAL and next_arg == arg:
+                    # Redundant load/store - remove both
                     i += 2
                     continue
+            
+            # No optimization applied, keep instruction
             optimized_insts.append((op, arg))
             i += 1
+        
         # Return new Code object preserving metadata
         return Code(code.name, optimized_insts, code.consts, code.nlocals, code.argcount)
 

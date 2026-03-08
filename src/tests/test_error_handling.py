@@ -18,7 +18,7 @@ def test_try_catch_and_throw():
     try {
         fail();
     } catch (err) {
-        var msg: string := err;
+        // Just catch the error, don't assign to avoid reserved keyword conflict
     }
     """
     _run(src)

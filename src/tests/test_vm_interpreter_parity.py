@@ -46,7 +46,7 @@ def _assert_parity(src: str):
 def test_parity_arithmetic_and_assignment():
     _assert_parity(
         """
-        var x := 2;
+        set x = 2;
         x = x + 5;
         show(x);
         """
@@ -56,8 +56,8 @@ def test_parity_arithmetic_and_assignment():
 def test_parity_if_else_branching():
     _assert_parity(
         """
-        var x := 10;
-        if (x > 5) {
+        const x = 10;
+        when (x > 5) {
             show("big");
         } else {
             show("small");
@@ -69,8 +69,8 @@ def test_parity_if_else_branching():
 def test_parity_while_loop():
     _assert_parity(
         """
-        var i := 0;
-        var s := 0;
+        set i = 0;
+        set s = 0;
         while (i < 4) {
             s = s + i;
             i = i + 1;
@@ -83,8 +83,8 @@ def test_parity_while_loop():
 def test_parity_function_call_and_return():
     _assert_parity(
         """
-        function add(a: int, b: int): int {
-            return a + b;
+        function add(a: int, b: int) {
+            give a + b;
         }
         show(add(7, 8));
         """

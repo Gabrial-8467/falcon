@@ -21,7 +21,7 @@ fn printMessage(msg) {
 }
 
 // Function expression (anonymous fn)
-set multiply = fn(x, y) {
+var multiply = fn(x, y) {
     give x * y;
 };
 

@@ -90,6 +90,52 @@ def normalize_ast(ast) -> None:
         pass
 
 
+def run_source(src: str, filename: str = "<string>") -> int:
+    """Run Vyom source code directly from a string."""
+    try:
+        # Lexing
+        tokens = Lexer(src).lex()
+        # Parsing
+        ast = Parser(tokens).parse()
+        TypeChecker().check(ast)
+        
+        # Passive AST normalization (in-memory only)
+        normalize_ast(ast)
+        
+        # Try compilation first
+        try:
+            compiler = Compiler()
+            code_obj = compiler.compile_module(ast, name=filename)
+            
+            # Prepare VM
+            vm = VM(verbose=False)
+            for k, v in BUILTINS.items():
+                vm.globals.setdefault(k, v)
+            
+            # Try running on VM
+            try:
+                result = vm.run_code(code_obj)
+                return 0
+            except (VMRuntimeError, Exception):
+                # Fall back to interpreter
+                pass
+        except (NotImplementedError, CompileError):
+            # Feature not implemented in compiler, use interpreter
+            pass
+        
+        # Interpreter fallback
+        interp = Interpreter()
+        interp.interpret(ast)
+        return 0
+        
+    except (LexerError, ParseError, TypeCheckError, InterpreterError) as e:
+        print(f"Error: {e}")
+        return 1
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return 1
+
+
 def run_file(path: str) -> int:
     if not path.lower().endswith('.vyom'):
         print(f"{path}: Error – only .vyom files are supported.")

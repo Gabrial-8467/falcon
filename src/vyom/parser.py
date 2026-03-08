@@ -5,10 +5,10 @@ Recursive-descent parser for Vyom.
 Produces a list of Stmt AST nodes from a token stream produced by lexer.Lexer.
 
 Grammar highlights handled here:
-  - var / const declarations (var NAME := expr or var NAME = expr)
+  - var / const declarations (var NAME = expr or var NAME = expr)
   - function declarations: function name(params) { ... }
   - function expressions: function (name?) (params) { ... }
-  - for-loops: for var i := START to END [step STEP] { ... }
+  - for-loops: for i = START to END [step STEP] { ... }
   - infinite loops: loop { ... }
   - if / while / return
   - assignment expressions (right-associative)
@@ -49,7 +49,8 @@ class Parser:
     # ---------------- top-level ----------------
     def _declaration(self) -> Stmt:
         # handle explicit keywords first
-        if self._match(TokenType.VAR):
+        if self._check(TokenType.VAR) and self._peek_next().type == TokenType.IDENT:
+            self._advance()
             return self._var_or_const_declaration(is_const=False, is_var=True)
         if self._check(TokenType.SET) and self._peek_next().type == TokenType.IDENT:
             self._advance()
@@ -58,14 +59,12 @@ class Parser:
             return self._var_or_const_declaration(is_const=True, is_var=False)
         if self._match(TokenType.FUNCTION):
             return self._function_declaration()
-        if self._match(TokenType.LET):
-            return self._var_or_const_declaration(is_const=False, is_var=False)
         # We only treat this as a declaration when the current token is IDENT and
         # the next token is DECL. Don't consume anything unless we're sure.
         if self._check(TokenType.IDENT) and self._peek_next().type == TokenType.DECL:
             # consume IDENT and DECL then parse initializer expression
             name_tok = self._advance()   # consume IDENT
-            self._advance()              # consume DECL (':=')
+            self._advance()              # consume DECL (legacy '=')
             initializer = self._expression()
             self._optional_semicolon()
             return LetStmt(name_tok.lexeme, initializer, is_const=False, is_var=True)
@@ -83,10 +82,10 @@ class Parser:
                 type_ann = self._parse_type_annotation()
             initializer: Optional[Expr] = None
 
-            # Prefer ':=' (DECL) new syntax, but accept '=' as fallback
-            if self._match(TokenType.DECL):
+            # Use '=' for declarations
+            if self._match(TokenType.EQ):
                 initializer = self._expression()
-            elif self._match(TokenType.EQ):
+            elif self._match(TokenType.DECL):
                 initializer = self._expression()
 
             declarations.append(
@@ -112,9 +111,6 @@ class Parser:
         return_type: Optional[TypeAnnotation] = None
         if self._match(TokenType.COLON):
             return_type = self._parse_type_annotation()
-        elif self._match(TokenType.EQ):
-            self._consume(TokenType.GT, "Expect '>' in function return annotation '=> type'")
-            return_type = self._parse_type_annotation()
         body = self._parse_block()
         return FunctionStmt(name, params, body, param_types=param_types, return_type=return_type)
 
@@ -131,7 +127,7 @@ class Parser:
         if self._match(TokenType.SAY):
             val = self._expression()
             self._optional_semicolon()
-            return ExprStmt(Call(Variable("show"), [val]))
+            return PrintStmt(val)
 
         # if
         if self._match(TokenType.IF):
@@ -217,23 +213,19 @@ class Parser:
     def _for_statement(self) -> Stmt:
         """
         Parse Vyom-style for:
-          for var i := START to END [step STEP] { ... }
+          for i = START to END [step STEP] { ... }
         """
-        # require 'var' in header (design choice); accept IDENT if user omitted
-        if self._match(TokenType.VAR):
-            name_tok = self._consume(TokenType.IDENT, "Expect iterator name in for-loop")
-        else:
-            # allow 'for i := ...' as permissive alternative
-            name_tok = self._consume(TokenType.IDENT, "Expect iterator name in for-loop")
+        # require iterator name
+        name_tok = self._consume(TokenType.IDENT, "Expect iterator name in for-loop")
         iter_name = name_tok.lexeme
 
-        # expect declaration operator ':=' or '='
-        if self._match(TokenType.DECL):
+        # expect declaration operator '='
+        if self._match(TokenType.EQ):
             start_expr = self._expression()
-        elif self._match(TokenType.EQ):
+        elif self._match(TokenType.DECL):
             start_expr = self._expression()
         else:
-            raise ParseError("Expect ':=' or '=' after iterator name in for-loop")
+            raise ParseError("Expect '=' after iterator name in for-loop")
 
         # expect 'to' keyword
         self._consume(TokenType.TO, "Expect 'to' in for-loop header")
@@ -354,9 +346,6 @@ class Parser:
             return_type: Optional[TypeAnnotation] = None
             if self._match(TokenType.COLON):
                 return_type = self._parse_type_annotation()
-            elif self._match(TokenType.EQ):
-                self._consume(TokenType.GT, "Expect '>' in function return annotation '=> type'")
-                return_type = self._parse_type_annotation()
             body = self._parse_block()
             return FunctionExpr(
                 name, params, body, param_types=param_types, return_type=return_type
@@ -412,9 +401,9 @@ class Parser:
             self._consume(TokenType.LBRACKET, "Expect '[' after 'array'")
             return self._array_literal()
         
-        # dict literal: {...}
+        # dict literal: {...} or set literal: {...}
         if self._match(TokenType.LBRACE):
-            return self._dict_literal()
+            return self._dict_or_set_literal()
 
         raise ParseError(f"Unexpected token: {self._peek()}")
 
@@ -443,6 +432,62 @@ class Parser:
         size_expr = self._expression()
         self._consume(TokenType.RBRACKET, "Expect ']' after array size expression")
         return ArrayLiteral(size_expr)
+
+    def _dict_or_set_literal(self) -> Expr:
+        """
+        Parse either a dict literal {...} or a set literal {...}.
+        - If empty {}: return empty dict (default behavior)
+        - If contains key:value pairs: dict
+        - If contains only values separated by commas: set
+        """
+        if self._check(TokenType.RBRACE):
+            # Empty {} - default to dict for backward compatibility
+            self._advance()
+            return DictLiteral([])
+        
+        # Peek ahead to determine if this is a dict or set
+        # Look for pattern: key : value (dict) vs value, value (set)
+        saved_current = self.current
+        is_dict = False
+        
+        # Check first item to see if it has a colon (dict pattern)
+        try:
+            # Skip potential whitespace (not applicable in token stream)
+            # Look ahead for colon after first expression
+            # We need to parse the first expression and see if colon follows
+            temp_tokens = []
+            temp_current = self.current
+            
+            # Find first non-comma token to determine pattern
+            while not self._is_at_end() and self._peek().type == TokenType.COMMA:
+                self._advance()
+            
+            # Check if the pattern looks like a dict (has colon after key)
+            # We'll look ahead for a colon token
+            found_colon = False
+            check_pos = self.current
+            while not self._is_at_end() and check_pos < len(self.tokens):
+                token = self.tokens[check_pos]
+                if token.type == TokenType.COLON:
+                    found_colon = True
+                    break
+                elif token.type == TokenType.COMMA or token.type == TokenType.RBRACE:
+                    break
+                check_pos += 1
+            
+            is_dict = found_colon
+            
+        except Exception:
+            # Default to dict if parsing fails
+            is_dict = True
+        
+        # Restore position
+        self.current = saved_current
+        
+        if is_dict:
+            return self._dict_literal()
+        else:
+            return self._set_literal()
 
     def _dict_literal(self) -> Expr:
         entries: List[tuple[Expr, Expr]] = []

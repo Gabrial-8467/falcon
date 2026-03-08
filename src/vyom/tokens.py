@@ -41,7 +41,7 @@ class TokenType(Enum):
     PIPE = auto()       # | (pattern matching OR)
 
     # --- Declaration / method operators (language-specific) ---
-    DECL = auto()          # :=  (declaration)
+    DECL = auto()          # :=  (declaration - legacy support)
     METHODCOLON = auto()   # ::  (method colon / custom operator)
 
     # --- Literals ---
@@ -50,9 +50,8 @@ class TokenType(Enum):
     STRING = auto()
 
     # --- Keywords (language) ---
-    VAR = auto()        # var
-    LET = auto()        # let (block‑scoped)
     CONST = auto()      # const
+    VAR = auto()        # var
     IF = auto()
     ELSE = auto()
     WHILE = auto()
