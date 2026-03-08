@@ -52,6 +52,66 @@ pip install -e .
 python -m vyom.repl
 ```
 
+# ▶ LSP Server
+
+```bash
+vyom lsp
+# or standalone
+vyom-lsp
+```
+
+## 🔧 Language Server Protocol (LSP)
+
+Vyom includes a built-in Language Server Protocol implementation providing rich IDE features:
+
+### Features
+- **Text Synchronization**: Real-time document synchronization
+- **Auto-completion**: Intelligent code completion for keywords, functions, and types
+- **Hover Information**: Documentation on hover for keywords and built-in functions
+- **Error Diagnostics**: Real-time syntax and type checking with error highlighting
+
+### Editor Setup
+
+#### Visual Studio Code
+Add to `settings.json`:
+```json
+{
+  "languageserver": {
+    "vyom": {
+      "command": "python",
+      "args": ["-m", "vyom.main", "lsp"],
+      "filetypes": ["vyom"],
+      "rootPatterns": [".git", "pyproject.toml"]
+    }
+  }
+}
+```
+
+#### Neovim (with nvim-lspconfig)
+```lua
+require'lspconfig'.vyom_lsp.setup{
+  cmd = {'vyom', 'lsp'},
+  filetypes = {'vyom'},
+  root_dir = lspconfig.util.root_pattern('.git', 'pyproject.toml'),
+}
+```
+
+#### Vim (with coc.nvim)
+Add to `coc-settings.json`:
+```json
+{
+  "client": {
+    "vyom-lsp": {
+      "command": ["vyom", "lsp"],
+      "filetypes": ["vyom"],
+      "root": "."
+    }
+  }
+}
+```
+
+For detailed LSP documentation, see [LSP.md](LSP.md).
+
 ## 🎯 Quick Start
 
 ### Running a Vyom Program

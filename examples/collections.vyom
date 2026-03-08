@@ -8,7 +8,7 @@ show("First fruit:", fruits[0]);
 // Tuple (immutable)
 var coordinates = (10, 20, 30);
 show("Tuple:", coordinates);
-show("Second coordinate:", coordinates[1]);
+show("Second coordinate:", coordinates[1])
 
 // Dictionary / Object
 var person = {
@@ -50,4 +50,5 @@ var data = {
 };
 show("Nested data:", data);
 show("First user:", data.users[0].name);
+
 

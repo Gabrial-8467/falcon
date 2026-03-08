@@ -1,0 +1,10 @@
+{
+  "client": {
+    "vyom-lsp": {
+      "command": ["vyom", "lsp"],
+      "filetypes": ["vyom"],
+      "root": ".",
+      "settings": {}
+    }
+  }
+}

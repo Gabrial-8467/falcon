@@ -1,0 +1,78 @@
+{
+  "languageserver": {
+    "vyom": {
+      "command": "D:\\vyom\\myenv\\Scripts\\python.exe",
+      "args": ["-m", "vyom.main", "lsp"],
+      "filetypes": ["vyom"],
+      "rootPatterns": [".git", "pyproject.toml"],
+      "settings": {}
+    }
+  },
+  "files.associations": {
+    "*.vyom": "vyom"
+  },
+  "editor.semanticTokenColorCustomizations": {
+    "[vyom]": {
+      "rules": {
+        "keyword": {
+          "foreground": "#569CD6",
+          "fontStyle": "bold"
+        },
+        "function": {
+          "foreground": "#DCDCAA"
+        },
+        "variable": {
+          "foreground": "#9CDCFE"
+        },
+        "string": {
+          "foreground": "#CE9178"
+        },
+        "number": {
+          "foreground": "#B5CEA8"
+        },
+        "comment": {
+          "foreground": "#6A9955",
+          "fontStyle": "italic"
+        },
+        "operator": {
+          "foreground": "#D4D4D4"
+        },
+        "type": {
+          "foreground": "#4EC9B0"
+        }
+      }
+    }
+  },
+  "editor.tokenColorCustomizations": {
+    "[vyom]": {
+      "textMateRules": [
+        {
+          "scope": "keyword.control.vyom",
+          "settings": {
+            "foreground": "#569CD6",
+            "fontStyle": "bold"
+          }
+        },
+        {
+          "scope": "string.quoted.vyom",
+          "settings": {
+            "foreground": "#CE9178"
+          }
+        },
+        {
+          "scope": "constant.numeric.vyom",
+          "settings": {
+            "foreground": "#B5CEA8"
+          }
+        },
+        {
+          "scope": "comment.line.vyom",
+          "settings": {
+            "foreground": "#6A9955",
+            "fontStyle": "italic"
+          }
+        }
+      ]
+    }
+  }
+}

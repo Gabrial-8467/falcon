@@ -399,6 +399,9 @@ def _build_argparser() -> argparse.ArgumentParser:
     # REPL command
     repl_parser = subparsers.add_parser("repl", help="Start interactive REPL")
     
+    # LSP command
+    lsp_parser = subparsers.add_parser("lsp", help="Start LSP server")
+    
     # Global options
     p.add_argument("-i", "--repl", action="store_true", help="Start interactive REPL")
     p.add_argument("--version", action="store_true", help="Print version and exit")
@@ -422,6 +425,12 @@ def main(argv: list[str] | None = None) -> int:
     # Handle repl command
     if args.command == "repl" or args.repl:
         start_repl()
+        return 0
+
+    # Handle LSP command
+    if args.command == "lsp":
+        from . import lsp_server
+        lsp_server.WorkingVyomLSP().run()
         return 0
 
     # Legacy behavior: if no command but file provided, run it
