@@ -217,3 +217,7 @@ test_simple_match.vyom
 debug_*.py
 debug_*.log
 parser_fix.txt
+
+# unused folders
+.claude
+.windsurf
